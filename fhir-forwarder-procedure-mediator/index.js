@@ -360,10 +360,10 @@ async function processIPSProceduresByEncounter(encId, patientId, enc) {
 }
 
 // 6) Health endpoint del forwarder
-app.get('/forwarderProcedure/_health', (_req, res) => res.send('OK'))
+app.get(['/forwarderProcedure/_health', '/forwarderprocedure/_health'], (_req, res) => res.send('OK'))
 
 // 7) Event endpoint
-app.post('/forwarderProcedure/_event', async (req, res) => {
+app.post(['/forwarderProcedure/_event', '/forwarderprocedure/_event'], async (req, res) => {
   logStep('📩 POST /event', req.body)
   const { uuid } = req.body
   if (!uuid) return res.status(400).json({ error: 'Missing uuid' })

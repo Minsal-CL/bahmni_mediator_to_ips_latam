@@ -88,7 +88,7 @@ app.use((req, res, next) => {
 });
 
 // Salud
-app.get('/icvpcert/health', (req, res) => res.json({ status: 'ok' }));
+app.get(['/icvpcert/health', '/icvpcert/_health'], (req, res) => res.json({ status: 'ok' }));
 
 // Helper: fecha de expiración ISO (ahora + días)
 const isoPlusDays = (days = 30) =>

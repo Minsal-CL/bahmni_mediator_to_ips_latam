@@ -538,9 +538,39 @@ function fixPatientCountry(bundle) {
 }
 
 // ===================== Debug dir =====================
-const debugDir = DEBUG_DIR_icvp ? path.resolve(DEBUG_DIR_icvp) : '/tmp';
-try { fs.mkdirSync(debugDir, { recursive: true }); }
-catch (e) { console.warn('⚠️ No se pudo crear debugDir:', e.message); }
+function resolveWritableDebugDir() {
+  const candidates = [];
+  if (DEBUG_DIR_icvp) candidates.push(path.resolve(DEBUG_DIR_icvp));
+  candidates.push('/tmp');
+  candidates.push(path.resolve(process.cwd(), 'tmp'));
+
+  for (const candidate of candidates) {
+    try {
+      fs.mkdirSync(candidate, { recursive: true });
+      fs.accessSync(candidate, fs.constants.W_OK);
+      return candidate;
+    } catch (e) {
+      console.warn('⚠️ Debug dir no escribible:', candidate, e.message);
+    }
+  }
+
+  return null;
+}
+
+const debugDir = resolveWritableDebugDir();
+
+function safeWriteDebugJson(prefix, data) {
+  if (!debugDir) return null;
+
+  const debugFile = path.join(debugDir, `${prefix}_${Date.now()}.json`);
+  try {
+    fs.writeFileSync(debugFile, JSON.stringify(data, null, 2));
+    return debugFile;
+  } catch (e) {
+    console.warn('⚠️ No se pudo guardar archivo debug:', debugFile, e.message);
+    return null;
+  }
+}
 
 // ===================== OpenHIM =====================
 console.log(`Starting LACPASS→ITI-65 Mediator...`);
@@ -2311,7 +2341,9 @@ function normalizeOrganizationResource(orga) {
 }
 
 // ===================== Routes =====================
-app.get('/lacpass/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get(['/lacpass/health', '/lacpass/_health'], (req, res) =>
+  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+);
 
 // ===================== ROUTE ITI-65 - VERSIÓN INTEGRADA =====================
 app.post('/lacpass/_iti65', async (req, res) => {
@@ -2735,9 +2767,8 @@ app.post('/lacpass/_iti65', async (req, res) => {
 
     // Debug + envío
     console.log('DEBUG: Sending ProvideBundle to', FHIR_NODO_NACIONAL_SERVER);
-    const debugFile = path.join(debugDir, `provideBundle_${Date.now()}.json`);
-    fs.writeFileSync(debugFile, JSON.stringify(provideBundle, null, 2));
-    console.log('DEBUG: saved →', debugFile);
+    const debugFile = safeWriteDebugJson('provideBundle', provideBundle);
+    if (debugFile) console.log('DEBUG: saved →', debugFile);
 
     const resp = await axios.post(FHIR_NODO_NACIONAL_SERVER, provideBundle, {
       headers: {
@@ -2748,9 +2779,8 @@ app.post('/lacpass/_iti65', async (req, res) => {
     });
     console.log(`[${req.correlationId}] ⇒ ITI-65 sent, status ${resp.status}`);
     if (resp.status >= 400) {
-      const ooFile = path.join(debugDir, `operationOutcome_${Date.now()}.json`);
-      try { fs.writeFileSync(ooFile, JSON.stringify(resp.data, null, 2)); } catch {}
-      console.error('❌ OperationOutcome guardado en:', ooFile);
+      const ooFile = safeWriteDebugJson('operationOutcome', resp.data);
+      if (ooFile) console.error('❌ OperationOutcome guardado en:', ooFile);
     }
 
     // Si ANTES creábamos un AllergyIntolerance "no-allergy-info", proteger aquí:
