@@ -31,8 +31,6 @@ services:
       - ./tmp:/tmp
     #tmpfs:
     #  - /tmp:size=64m,mode=1777
-      # Mapeamos la carpeta local ./tmp a una carpeta segura /debug_data en el contenedor
-      - ./tmp:/debug_data
     restart: unless-stopped
 
   lacpass-iti67-68-mediator:
@@ -87,8 +85,6 @@ services:
       - "8011:8011"
     volumes:
       - ./tmp:/tmp
-      # Mapeamos la carpeta local ./tmp a una carpeta segura /debug_data en el contenedor
-      - ./tmp:/debug_data
     restart: unless-stopped
 
   dcv-icvp-mediator:
