@@ -4,7 +4,6 @@ import express from 'express';
 import axios from 'axios';
 // Nota: cambios para soportar OID con "urn:oid." en lugar de "urn:oid:"
 import https from 'https';
-import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -542,7 +541,7 @@ function fixPatientCountry(bundle) {
 function resolveWritableDebugDir() {
   const candidates = [];
   if (DEBUG_DIR_icvp) candidates.push(path.resolve(DEBUG_DIR_icvp));
-  candidates.push(os.tmpdir());
+  candidates.push('/tmp');
   candidates.push(path.resolve(process.cwd(), 'tmp'));
 
   for (const candidate of candidates) {
