@@ -285,7 +285,7 @@ const IMM_SET_CODE = '1421AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 // Códigos base (deja un default para VACCINE; otros entran por ENV)
 const IMM_CODES = {
   // Vaccination -> valueCodeableConcept
-  VACCINE:       '598b3224-25e4-40ad-92d6-974683bb82af', // tu UUID local por defecto
+  VACCINE:       'fd324375-d937-4225-82a8-c1c76b6d80a3', // tu UUID local por defecto
   VAX_DATE:      '1410AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
   LOT:           '1420AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
   LOT_EXP:       '165907AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
