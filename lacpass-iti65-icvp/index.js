@@ -3366,9 +3366,14 @@ app.post('/icvp/_iti65', async (req, res) => {
 
     // Debug + envío
     console.log('DEBUG: Sending ProvideBundle to', FHIR_NODO_NACIONAL_SERVER);
-    const debugFile = path.join(debugDir, `provideBundle_${Date.now()}.json`);
-    fs.writeFileSync(debugFile, JSON.stringify(provideBundle, null, 2));
-    console.log('DEBUG: saved →', debugFile);
+    try {
+      fs.mkdirSync(debugDir, { recursive: true });
+      const debugFile = path.join(debugDir, `provideBundle_${Date.now()}.json`);
+      fs.writeFileSync(debugFile, JSON.stringify(provideBundle, null, 2));
+      console.log('DEBUG: saved →', debugFile);
+    } catch (debugErr) {
+      console.warn('⚠️ DEBUG: No se pudo guardar el archivo de debug:', debugErr.message);
+    }
 
     const resp = await axios.post(FHIR_NODO_NACIONAL_SERVER, provideBundle, {
       headers: { 'Content-Type': 'application/fhir+json' },
