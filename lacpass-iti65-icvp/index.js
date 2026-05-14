@@ -1109,26 +1109,26 @@ function fixPatientIdentifiers(bundle) {
     const defaultPpnOid = toUrnOid(DEFAULT_PPN_OID || '2.16.840.1.113883.4.330.152');
 
     // Filtrar solo pasaportes
-    patient.identifier = patient.identifier.filter(id => {
+    // Normalizar solo los identificadores que sean pasaporte, conservando el resto sin borrar nada
+    for (const id of patient.identifier) {
         const txt = (id?.type?.text || '').toLowerCase();
         const isPassportByText = /pasaporte|passport/.test(txt);
         const isPassportByCode = (id?.type?.coding || []).some(c =>
             String(c?.code || '').toUpperCase() === 'PPN' ||
             String(c?.code || '') === 'a2551e57-6028-428b-be3c-21816c252e06'
         );
-        return isPassportByText || isPassportByCode;
-    });
-
-    // Normalizar los pasaportes que quedaron
-    for (const id of patient.identifier) {
-        id.system = id.system || defaultPpnOid;
-        id.use = 'official';
-        id.type = id.type || {};
-        id.type.coding = [{
-            system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-            code: 'PPN'
-        }];
-        if (id.type.text) delete id.type.text;
+        
+        // Si es pasaporte, lo normaliza. Si no lo es, lo ignora y lo deja intacto.
+        if (isPassportByText || isPassportByCode) {
+            id.system = id.system || defaultPpnOid;
+            id.use = 'official';
+            id.type = id.type || {};
+            id.type.coding = [{
+                system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
+                code: 'PPN'
+            }];
+            if (id.type.text) delete id.type.text;
+        }
     }
 
     /*// Asegurar que exista al menos un national id si no vino (slice requerido)
@@ -2360,7 +2360,7 @@ function fixBundleValidationIssues(summaryBundle) {
         if (!hasValidOidIdentifier) {
             console.warn('⚠️ Patient no tiene identifiers URN OID válidos después de fixPatientIdentifiers');
             // Forzar creación de un identifier básico
-            patientEntry.resource.identifier = [{
+            /*patientEntry.resource.identifier = [{
                 use: 'usual',                                 // MR debe ser 'usual'
                 type: {
                     coding: [{
@@ -2370,7 +2370,7 @@ function fixBundleValidationIssues(summaryBundle) {
                 },
                 system: toUrnOid('2.16.152'), // OID genérico normalizado a urn:oid.<...>
                 value: patientEntry.resource.id || 'unknown'
-            }];
+            }];*/
         }
 
         ensureLacPatientProfile(patientEntry.resource);
@@ -2691,6 +2691,7 @@ function fixBundleValidationIssues(summaryBundle) {
             }
 
             // Si no encontramos identifiers apropiados, crear con valores por defecto
+           /*
             if (patient.identifier.length === 0 && natOid) {
                 const defaultValue = originalIds[0]?.value || `ID-${patient.id || 'unknown'}`;
                 patient.identifier.push({
@@ -2699,7 +2700,7 @@ function fixBundleValidationIssues(summaryBundle) {
                     system: toUrnOid(natOid),
                     value: defaultValue
                 });
-            }
+            }*/
         }
     }
 
