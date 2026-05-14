@@ -1331,6 +1331,7 @@ function fixPatientIdentifiers(bundle) {
   }
 
   // Asegurar que exista al menos un national id si no vino (slice requerido)
+  /*
   const hasNational = patient.identifier.some(id =>
     String(id.system||'') === defaultNatOid ||
     (id.type?.coding||[]).some(c => c.system === 'http://lacpass.racsel.org/CodeSystem/national-identifier-types' && c.code === 'RUN')
@@ -1342,7 +1343,7 @@ function fixPatientIdentifiers(bundle) {
       type: { coding: [{ system: 'http://lacpass.racsel.org/CodeSystem/national-identifier-types', code: 'RUN' }] },
       value: patient.identifier?.[0]?.value || `RUN*${patient.id || 'UNKNOWN'}`
     });
-  }
+  }*/
 }
 
 function ensureLacPatientProfile(patient) {
@@ -1569,7 +1570,7 @@ function fixBundleValidationIssues(summaryBundle) {
 
     if (!hasValidOidIdentifier) {
       console.warn('⚠️ Patient no tiene identifiers URN OID válidos después de fixPatientIdentifiers');
-      console.log('  - Forzando creación de identifier básico...');
+      /*console.log('  - Forzando creación de identifier básico...');
       patientEntry.resource.identifier = [{
         use: 'usual',
         type: {
@@ -1581,7 +1582,7 @@ function fixBundleValidationIssues(summaryBundle) {
         system: toUrnOid('2.16.152'),
         value: patientEntry.resource.id || 'unknown'
       }];
-      console.log(`  - Identifier creado: ${JSON.stringify(patientEntry.resource.identifier[0])}`);
+      console.log(`  - Identifier creado: ${JSON.stringify(patientEntry.resource.identifier[0])}`);*/
     }
 
     console.log('  - Agregando perfiles LAC e IPS...');
@@ -1913,7 +1914,7 @@ function fixBundleValidationIssues(summaryBundle) {
       console.log(`  - Patient ya tiene ${patient.identifier.length} identifiers`);
     } else {
       console.log('  - Creando identifiers desde cero...');
-      const originalIds = [...(patient.identifier || [])];
+      /*const originalIds = [...(patient.identifier || [])];
       patient.identifier = [];
 
       const nationalId = originalIds.find(id =>
@@ -1929,7 +1930,7 @@ function fixBundleValidationIssues(summaryBundle) {
           type: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'MR' }] },
           system: toUrnOid(natOid),
           value: nationalId.value || 'unknown'
-        });
+        });*/
       }
 
       const passportId = originalIds.find(id =>
