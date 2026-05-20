@@ -1959,7 +1959,7 @@ function fixBundleValidationIssues(summaryBundle) {
         });
       }
     }
-  }
+  
 
   // 10) País ISO2
   console.log('🌎 [ETAPA 15] Aplicando fixPatientCountry...');
