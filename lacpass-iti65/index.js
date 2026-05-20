@@ -1683,17 +1683,20 @@ function fixBundleValidationIssues(summaryBundle) {
       sec.entry = sec.entry.filter(e => {
         const ref = e?.reference || '';
         if (!ref) return false;
-        if (seen.has(ref)) return false;
 
-        const resolved = summaryBundle.entry?.find(x => {
+        const resolvedEntry = summaryBundle.entry?.find(x => {
           const fu = x.fullUrl || (x.resource?.id ? `${x.resource.resourceType}/${x.resource.id}` : '');
           return fu === ref || fu?.endsWith(`/${ref.split('/').pop()}`);
-        })?.resource;
+        });
 
-        if (!resolved) return false;
-        if (allowed && !allowed.includes(resolved.resourceType)) return false;
+        if (!resolvedEntry || !resolvedEntry.resource) return false;
+        if (allowed && !allowed.includes(resolvedEntry.resource.resourceType)) return false;
 
-        seen.add(ref);
+        // Clave única basada en el ID real del recurso para evitar duplicados si hay mezcla de referencias absolutas/relativas
+        const uniqueKey = `${resolvedEntry.resource.resourceType}/${resolvedEntry.resource.id}`;
+        if (seen.has(uniqueKey)) return false;
+
+        seen.add(uniqueKey);
         return true;
       });
 
