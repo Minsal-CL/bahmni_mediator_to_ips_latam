@@ -45,9 +45,9 @@ axios.defaults.httpsAgent = new https.Agent({
 // =============================
 // Flags & Consts
 // =============================
-function logStep (...args) { console.log(new Date().toISOString(), '-', ...args) }
+function logStep(...args) { console.log(new Date().toISOString(), '-', ...args) }
 const DEBUG = /^true$/i.test(process.env.DEBUG_CONDITION || 'false')
-function dbg (...a) { if (DEBUG) logStep('[DEBUG_COND]', ...a) }
+function dbg(...a) { if (DEBUG) logStep('[DEBUG_COND]', ...a) }
 
 const FHIR_NODE_BASE = (process.env.FHIR_NODE_URL || '').replace(/\/$/, '')
 const FHIR_PROXY_BASE = (process.env.FHIR_PROXY_URL || '').replace(/\/$/, '')
@@ -56,7 +56,7 @@ const FHIR_PROXY_BASE = (process.env.FHIR_PROXY_URL || '').replace(/\/$/, '')
 const SNOMED = 'http://snomed.info/sct'
 const CC_CATEGORY = 'http://terminology.hl7.org/CodeSystem/condition-category'
 const CC_CLINICAL = 'http://terminology.hl7.org/CodeSystem/condition-clinical'
-const CC_VERIFY   = 'http://terminology.hl7.org/CodeSystem/condition-ver-status'
+const CC_VERIFY = 'http://terminology.hl7.org/CodeSystem/condition-ver-status'
 
 // Traducción opcional si falta SNOMED (apagado por defecto)
 const USE_TRANSLATE = /^true$/i.test(process.env.USE_TRANSLATE_TO_SNOMED || 'false')
@@ -81,12 +81,12 @@ const DIAG_CERTAINTY = (process.env.DIAG_CERTAINTY || 'd368b61c-5e07-11ef-8f7c-0
 const DIAG_ORDER = (process.env.DIAG_ORDER || 'd369afd7-5e07-11ef-8f7c-0242ac120002')            // "Diagnosis order"
 
 function isCode(res, code) { return codeList(res).some(c => c.code === code) }
-function indexById(bundle) { const m = new Map(); for (const e of (bundle.entry||[])) { const r=e.resource; if (r?.id) m.set(r.id, r) } return m }
+function indexById(bundle) { const m = new Map(); for (const e of (bundle.entry || [])) { const r = e.resource; if (r?.id) m.set(r.id, r) } return m }
 
 // =============================
 // HTTP helpers to/from OpenMRS proxy and Node FHIR
 // =============================
-async function getFromProxy (path) {
+async function getFromProxy(path) {
   const url = `${FHIR_PROXY_BASE}${path}`
   logStep('GET (proxy)', url)
   const resp = await axios.get(url, {
@@ -99,7 +99,7 @@ async function getFromProxy (path) {
   return resp.data
 }
 
-async function putToNode (resource) {
+async function putToNode(resource) {
   const url = `${FHIR_NODE_BASE}/fhir/${resource.resourceType}/${resource.id}`
   try {
     logStep('PUT (node)', url)
@@ -115,18 +115,18 @@ async function putToNode (resource) {
 // =============================
 // Generic utils
 // =============================
-function codeList (res) { return (res?.code?.coding || []).map(c => ({ system: c.system, code: c.code, display: c.display })).filter(x => x.code) }
-function pickFirstSNOMED (res) { return codeList(res).find(c => c.system === SNOMED) }
-function toDateOnly (dt) { return (typeof dt === 'string' ? dt.substring(0, 10) : undefined) }
+function codeList(res) { return (res?.code?.coding || []).map(c => ({ system: c.system, code: c.code, display: c.display })).filter(x => x.code) }
+function pickFirstSNOMED(res) { return codeList(res).find(c => c.system === SNOMED) }
+function toDateOnly(dt) { return (typeof dt === 'string' ? dt.substring(0, 10) : undefined) }
 
-async function getIfExists (path) {
+async function getIfExists(path) {
   try { return await getFromProxy(path) } catch (e) {
     if (String(e.message).endsWith(' returned 404')) return null
     throw e
   }
 }
 
-async function resolveEncounterAndPatient (uuid) {
+async function resolveEncounterAndPatient(uuid) {
   // 1) Encounter directo
   const enc1 = await getIfExists(`/Encounter/${encodeURIComponent(uuid)}`)
   if (enc1?.resourceType === 'Encounter') {
@@ -161,7 +161,7 @@ async function resolveEncounterAndPatient (uuid) {
 // =============================
 // Optional: ConceptMap $translate → SNOMED (simple)
 // =============================
-function parseTranslate (parameters) {
+function parseTranslate(parameters) {
   const params = parameters?.parameter || []
   const matches = params.filter(p => p.name === 'match')
   for (const m of matches) {
@@ -175,7 +175,7 @@ function parseTranslate (parameters) {
   return null
 }
 
-async function translateToSNOMED (sourceCoding) {
+async function translateToSNOMED(sourceCoding) {
   if (!USE_TRANSLATE || !TERMINOLOGY_BASE || !sourceCoding?.code) return null
   try {
     const url = `${TERMINOLOGY_BASE}/ConceptMap/$translate`
@@ -195,7 +195,7 @@ async function translateToSNOMED (sourceCoding) {
   }
 }
 
-function parseTranslateICD10 (parameters) {
+function parseTranslateICD10(parameters) {
   const params = parameters?.parameter || []
   const matches = params.filter(p => p.name === 'match')
   const ordered = [
@@ -224,7 +224,7 @@ function parseTranslateICD10 (parameters) {
   return null
 }
 
-async function translateSnomedToICD10 (snomedCoding) {
+async function translateSnomedToICD10(snomedCoding) {
   if (!USE_SNOMED_TO_ICD10 || !TERMINOLOGY_BASE || !snomedCoding?.code) return null
   try {
     const url = `${TERMINOLOGY_BASE}/ConceptMap/$translate`
@@ -285,9 +285,9 @@ function buildPatientDisplay(patient) {
   return (nameStr || idStr) ? `${nameStr}${idStr}` : undefined
 }
 
-async function buildConditionFromDiagnosisGroup (groupObs, byId, patientRef, encounterRef, enc, patient) {
+async function buildConditionFromDiagnosisGroup(groupObs, byId, patientRef, encounterRef, enc, patient) {
   // Buscar miembros relevantes del grupo
-  const memberIds = (groupObs.hasMember || []).map(m => m.reference?.replace(/^Observation\//,'')).filter(Boolean)
+  const memberIds = (groupObs.hasMember || []).map(m => m.reference?.replace(/^Observation\//, '')).filter(Boolean)
   const members = memberIds.map(id => byId.get(id)).filter(Boolean)
   const coded = members.find(r => isCode(r, DIAG_CODED))
   const certaintyObs = members.find(r => isCode(r, DIAG_CERTAINTY))
@@ -370,7 +370,7 @@ async function buildConditionFromDiagnosisGroup (groupObs, byId, patientRef, enc
   if (codeText) rows.push(`<tr><td>Code:</td><td>${codeText}</td></tr>`)
   if (subjDisp) rows.push(`<tr><td>Subject:</td><td>${subjDisp}</td></tr>`)
   if (condition.onsetDateTime) rows.push(`<tr><td>Onset:</td><td>${condition.onsetDateTime}</td></tr>`)
-  if (condition.recordedDate) rows.push(`<tr><td>Recorded Date:</td><td>${condition.recordedDate.substring(0,10)}</td></tr>`)
+  if (condition.recordedDate) rows.push(`<tr><td>Recorded Date:</td><td>${condition.recordedDate.substring(0, 10)}</td></tr>`)
   if (condition.recorder?.reference) {
     const recDisp = condition.recorder.display || 'Recorder'
     rows.push(`<tr><td>Recorder:</td><td>${recDisp}</td></tr>`)
@@ -401,7 +401,7 @@ async function buildConditionFromDiagnosisGroup (groupObs, byId, patientRef, enc
 // =============================
 // Pipeline: process Conditions for an Encounter
 // =============================
-async function processConditionsByEncounter (enc, patient) {
+async function processConditionsByEncounter(enc, patient) {
   if (!enc?.id) return 0
   const encId = enc.id
   const pid = enc.subject?.reference?.split('/')[1]
@@ -409,7 +409,7 @@ async function processConditionsByEncounter (enc, patient) {
   const encounterRef = `Encounter/${encId}`
 
   // Cargar Observations del Encounter (usa referencia tipada)
-  const bundle = await getFromProxy(`/Observation?encounter=${encodeURIComponent('Encounter/'+encId)}&_count=200&_format=application/fhir+json`)
+  const bundle = await getFromProxy(`/Observation?encounter=${encodeURIComponent('Encounter/' + encId)}&_count=200&_format=application/fhir+json`)
   if (bundle.resourceType !== 'Bundle' || !Array.isArray(bundle.entry) || !bundle.entry.length) {
     logStep('ⓘ No hay Observations para el Encounter', encId)
     return 0
@@ -457,6 +457,29 @@ app.post('/forwardercondition/_event', async (req, res) => {
     try {
       logStep('📤 Subiendo Patient…', pid)
       patient = await getFromProxy(`/Patient/${pid}`)
+      if (Array.isArray(patient.identifier)) {
+        // Helper para extraer OIDs del .env o usar los valores por defecto
+        const getOid = (envVar, defaultVal) => {
+          const val = process.env[envVar] || defaultVal;
+          return val.startsWith('urn:oid.') ? val : (val.startsWith('urn:oid:') ? val.replace(':', '.') : `urn:oid.${val}`);
+        };
+        const natOid = getOid('LAC_NATIONAL_ID_SYSTEM_OID', '2.16.152');
+        const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152');
+
+        patient.identifier.forEach(id => {
+          const text = id.type?.text || '';
+          if (text === 'Patient Identifier') {
+            id.type = id.type || {};
+            id.type.coding = [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'NNCHL' }];
+            id.system = natOid;
+          } else if (text === 'Pasaporte') {
+            id.type = id.type || {};
+            id.type.coding = [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }];
+            id.use = 'official';
+            id.system = ppnOid;
+          }
+        });
+      }
       await putToNode(patient)
     } catch (e) {
       logStep('⚠️ No se pudo subir Patient:', e.message)
@@ -485,7 +508,7 @@ const openhimOptions = {
 }
 const me = mediatorConfig
 
-function onRegister (err) {
+function onRegister(err) {
   if (err) return logStep('❌ Registration failed', err)
   logStep('✅ Registered mediator', openhimOptions.urn)
   activateHeartbeat(openhimOptions, me.heartbeatInterval || 30000)

@@ -261,6 +261,7 @@ app.post('/forwarder/_event', async (req, res) => {
     const [ , patientId ] = enc.subject.reference.split('/')
     logStep('📤 Subiendo Patient…', patientId)
     const patient = await getFromProxy(`/Patient/${patientId}`)
+    
     await putToNode(patient)
     sent++
 
