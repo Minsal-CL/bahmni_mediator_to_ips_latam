@@ -421,6 +421,32 @@ app.post('/forwarder/_event', async (req, res) => {
     const [, patientId ] = enc.subject.reference.split('/')
     logStep('📤 Subiendo Patient…', patientId)
     const patient = await getFromProxy(`/Patient/${patientId}`)
+
+    // Normalizar identificadores del Patient antes de subirlo
+    if (Array.isArray(patient.identifier)) {
+      // Helper para extraer OIDs del .env o usar los valores por defecto
+      const getOid = (envVar, defaultVal) => {
+        const val = process.env[envVar] || defaultVal;
+        return val.startsWith('urn:oid.') ? val : (val.startsWith('urn:oid:') ? val.replace(':', '.') : `urn:oid.${val}`);
+      };
+      const natOid = getOid('LAC_NATIONAL_ID_SYSTEM_OID', '2.16.152');
+      const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152');
+
+      patient.identifier.forEach(id => {
+        const text = id.type?.text || '';
+        if (text === 'Patient Identifier') {
+          id.type = id.type || {};
+          id.type.coding = [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'NNCHL' }];
+          id.system = natOid;
+        } else if (text === 'Pasaporte') {
+          id.type = id.type || {};
+          id.type.coding = [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }];
+          id.use = 'official';
+          id.system = ppnOid;
+        }
+      });
+    }
+
     await putToNode(patient); sent++
 
     // Notificar ITI-65
