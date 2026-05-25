@@ -1290,42 +1290,42 @@ function ensureRequiredSectionEntry(summaryBundle, comp, loincCode, allowedTypes
 
     // Vamos a reconstruir completamente las entradas de la sección cuando sea Condition
     // para cumplir con sectionProblems (11450-4) y sectionPastIllnessHx (11348-0).
-    if (allowedTypes.includes('Condition')) {
-        const isPastSection = loincCode === LOINC_CODES.PAST_ILLNESS_SECTION; // 11348-0
-        const isProblemsSection = loincCode === LOINC_CODES.PROBLEMS_SECTION;  // 11450-4
+    // if (allowedTypes.includes('Condition')) {
+    //     const isPastSection = loincCode === LOINC_CODES.PAST_ILLNESS_SECTION; // 11348-0
+    //     const isProblemsSection = loincCode === LOINC_CODES.PROBLEMS_SECTION;  // 11450-4
 
-        // Todas las Conditions en el bundle (y que no sean "absent/unknown")
-        const allConds = (summaryBundle.entry || [])
-            .filter(x => x.resource?.resourceType === 'Condition' && !isAbsentProblemCondition(x.resource));
+    //     // Todas las Conditions en el bundle (y que no sean "absent/unknown")
+    //     const allConds = (summaryBundle.entry || [])
+    //         .filter(x => x.resource?.resourceType === 'Condition' && !isAbsentProblemCondition(x.resource));
 
-        // Clasificación (usa helpers existentes)
-        const actives = allConds.filter(x => isActiveProblem(x.resource));
-        const pasts   = allConds.filter(x => isPastIllness(x.resource));
+    //     // Clasificación (usa helpers existentes)
+    //     const actives = allConds.filter(x => isActiveProblem(x.resource));
+    //     const pasts   = allConds.filter(x => isPastIllness(x.resource));
 
-        // Conjunto objetivo según la sección
-        let target = [];
-        if (isProblemsSection) target = actives;
-        if (isPastSection)     target = pasts;
+    //     // Conjunto objetivo según la sección
+    //     let target = [];
+    //     if (isProblemsSection) target = actives;
+    //     if (isPastSection)     target = pasts;
 
-        // Si hay target, lo aplicamos completo; si no, dejamos que el fallback genérico haga placeholder
-        if (target.length > 0) {
-            // Ensamblar referencias sin duplicados
-            const uniq = new Set();
-            sec.entry = [];
-            for (const candidate of target) {
-                ensureIpsProfile(candidate.resource);
-                if (!uniq.has(candidate.fullUrl)) {
-                    uniq.add(candidate.fullUrl);
-                    sec.entry.push({ reference: candidate.fullUrl });
-                }
-            }
-            // Salimos porque ya poblamos esta sección correctamente
-            return;
-        }
+    //     // Si hay target, lo aplicamos completo; si no, dejamos que el fallback genérico haga placeholder
+    //     if (target.length > 0) {
+    //         // Ensamblar referencias sin duplicados
+    //         const uniq = new Set();
+    //         sec.entry = [];
+    //         for (const candidate of target) {
+    //             ensureIpsProfile(candidate.resource);
+    //             if (!uniq.has(candidate.fullUrl)) {
+    //                 uniq.add(candidate.fullUrl);
+    //                 sec.entry.push({ reference: candidate.fullUrl });
+    //             }
+    //         }
+    //         // Salimos porque ya poblamos esta sección correctamente
+    //         return;
+    //     }
         // Si no había ninguna Condition para esta sección, caeremos al fallback más abajo (placeholder)
         // Añadimos return para terminar aquí sin inyectar diagnósticos sintéticos
-        return;
-    }
+    //    return;
+    //}
 
 
 
@@ -2350,11 +2350,11 @@ function fixBundleValidationIssues(summaryBundle) {
     if (compositionEntry?.resource?.section) {
         // Mapa loinc -> tipos permitidos
         const sectionAllowedTypes = {
-            [LOINC_CODES.ALLERGIES_SECTION]: ['AllergyIntolerance'],
-            [LOINC_CODES.IMMUNIZATIONS_SECTION]: ['Immunization'],
-            [LOINC_CODES.MEDICATIONS_SECTION]: ['MedicationStatement','MedicationRequest'],
-            [LOINC_CODES.PROBLEMS_SECTION]: ['Condition'],
-            [LOINC_CODES.PAST_ILLNESS_SECTION]: ['Condition']
+            // [LOINC_CODES.ALLERGIES_SECTION]: ['AllergyIntolerance'],
+            [LOINC_CODES.IMMUNIZATIONS_SECTION]: ['Immunization']
+            // [LOINC_CODES.MEDICATIONS_SECTION]: ['MedicationStatement','MedicationRequest'],
+            // [LOINC_CODES.PROBLEMS_SECTION]: ['Condition'],
+            // [LOINC_CODES.PAST_ILLNESS_SECTION]: ['Condition']
         };
         compositionEntry.resource.section.forEach(sec => {
             const loinc = (sec.code?.coding || []).find(c => c.system === 'http://loinc.org')?.code;
@@ -2379,46 +2379,46 @@ function fixBundleValidationIssues(summaryBundle) {
     }
 
     // 2. Perfiles IPS en recursos referenciados por las secciones para que pasen los discriminadores
-    for (const e of summaryBundle.entry) {
-        const r = e.resource;
-        if (!r) continue;
+    // for (const e of summaryBundle.entry) {
+    //     const r = e.resource;
+    //     if (!r) continue;
 
-        // Alergias, Medicación, Problemas (activos/pasados)…
-        if (['AllergyIntolerance','Immunization','MedicationStatement','MedicationRequest','Condition','Organization']
-            .includes(r.resourceType)) {
-            ensureIpsProfile(r);
-        }
-    }
+    //     // Alergias, Medicación, Problemas (activos/pasados)…
+    //     if (['AllergyIntolerance','Immunization','MedicationStatement','MedicationRequest','Condition','Organization']
+    //         .includes(r.resourceType)) {
+    //         ensureIpsProfile(r);
+    //     }
+    // }
 
     // 3. Corregir sección "Historial de Enfermedades Pasadas"
-    if (compositionEntry?.resource?.section) {
-        const pastIllnessSection = compositionEntry.resource.section.find(s =>
-            s.code?.coding?.some(c => c.code === '11348-0')
-        );
+    // if (compositionEntry?.resource?.section) {
+    //     const pastIllnessSection = compositionEntry.resource.section.find(s =>
+    //         s.code?.coding?.some(c => c.code === '11348-0')
+    //     );
 
-        if (pastIllnessSection) {
-            // Agregar div requerido al text.div
-            pastIllnessSection.text.div = '<div xmlns="http://www.w3.org/1999/xhtml"><h5>Historial de Enfermedades Pasadas</h5><p>Condiciones médicas previas del paciente.</p></div>';
+    //     if (pastIllnessSection) {
+    //         // Agregar div requerido al text.div
+    //         pastIllnessSection.text.div = '<div xmlns="http://www.w3.org/1999/xhtml"><h5>Historial de Enfermedades Pasadas</h5><p>Condiciones médicas previas del paciente.</p></div>';
 
-            // Corregir display del código LOINC
-            const loincCoding = pastIllnessSection.code.coding.find(c => c.system === 'http://loinc.org' && c.code === '11348-0');
-            if (loincCoding && loincCoding.display === 'History of Past illness Narrative') {
-                loincCoding.display = 'History of Past illness note';
-            }
-        }
+    //         // Corregir display del código LOINC
+    //         const loincCoding = pastIllnessSection.code.coding.find(c => c.system === 'http://loinc.org' && c.code === '11348-0');
+    //         if (loincCoding && loincCoding.display === 'History of Past illness Narrative') {
+    //             loincCoding.display = 'History of Past illness note';
+    //         }
+    //     }
 
-        const immunisationSection = compositionEntry.resource.section.find(s =>
-            s.code?.coding?.some(c => c.code === '11369-6')
-        );
+    //     const immunisationSection = compositionEntry.resource.section.find(s =>
+    //         s.code?.coding?.some(c => c.code === '11369-6')
+    //     );
 
-        if (immunisationSection) {
-            // Corregir display del código LOINC a la etiqueta publicada en LOINC 2.77
-            const loincCoding = immunisationSection.code.coding.find(c => c.system === 'http://loinc.org' && c.code === '11369-6');
-            if (loincCoding) {
-                loincCoding.display = 'History of Immunization note';
-            }
-        }
-    }
+    //     if (immunisationSection) {
+    //         // Corregir display del código LOINC a la etiqueta publicada en LOINC 2.77
+    //         const loincCoding = immunisationSection.code.coding.find(c => c.system === 'http://loinc.org' && c.code === '11369-6');
+    //         if (loincCoding) {
+    //             loincCoding.display = 'History of Immunization note';
+    //         }
+    //     }
+    // }
 
     // 3. Continuar con patientEntry ya procesado en sección 1)
 
@@ -2432,77 +2432,77 @@ function fixBundleValidationIssues(summaryBundle) {
     }
 
     // 5. Corregir Conditions - filtrar OpenMRS y codings sin system
-    summaryBundle.entry?.forEach(entry => {
-        if (entry.resource?.resourceType === 'Condition' && entry.resource.code?.coding) {
-            // Filtrar codings sin system y OpenMRS (problemático para validación IPS/LAC)
-            entry.resource.code.coding = entry.resource.code.coding
-                .filter(c => !!c.system && c.system !== 'http://openmrs.org/concepts');
+    // summaryBundle.entry?.forEach(entry => {
+    //     if (entry.resource?.resourceType === 'Condition' && entry.resource.code?.coding) {
+    //         // Filtrar codings sin system y OpenMRS (problemático para validación IPS/LAC)
+    //         entry.resource.code.coding = entry.resource.code.coding
+    //             .filter(c => !!c.system && c.system !== 'http://openmrs.org/concepts');
 
-            // Si quedan codings, ordenar con SNOMED primero
-            if (entry.resource.code.coding.length > 0) {
-                entry.resource.code.coding = sortCodingsPreferred(entry.resource.code.coding);
-            }
-        }
-    });
+    //         // Si quedan codings, ordenar con SNOMED primero
+    //         if (entry.resource.code.coding.length > 0) {
+    //             entry.resource.code.coding = sortCodingsPreferred(entry.resource.code.coding);
+    //         }
+    //     }
+    // });
 
     // 6. Corregir MedicationStatement - agregar system y effective[x]
-    summaryBundle.entry?.forEach(entry => {
-        if (entry.resource?.resourceType === 'MedicationStatement') {
-            // Agregar system a medicationCodeableConcept.coding
-            if (entry.resource.medicationCodeableConcept?.coding) {
-                entry.resource.medicationCodeableConcept.coding.forEach(coding => {
-                    if (!coding.system) {
-                        coding.system = 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips';
-                    }
-                    // Refuerzo específico para no-medication-info
-                    if ((coding.code === 'no-medication-info') || (coding.display === 'No information about medications')) {
-                        coding.system = 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips';
-                        coding.code = 'no-medication-info';
-                        if (!coding.display) coding.display = 'No information about medications';
-                    }
-                });
-            }
+    // summaryBundle.entry?.forEach(entry => {
+    //     if (entry.resource?.resourceType === 'MedicationStatement') {
+    //         // Agregar system a medicationCodeableConcept.coding
+    //         if (entry.resource.medicationCodeableConcept?.coding) {
+    //             entry.resource.medicationCodeableConcept.coding.forEach(coding => {
+    //                 if (!coding.system) {
+    //                     coding.system = 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips';
+    //                 }
+    //                 // Refuerzo específico para no-medication-info
+    //                 if ((coding.code === 'no-medication-info') || (coding.display === 'No information about medications')) {
+    //                     coding.system = 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips';
+    //                     coding.code = 'no-medication-info';
+    //                     if (!coding.display) coding.display = 'No information about medications';
+    //                 }
+    //             });
+    //         }
 
-            // Agregar effective[x] requerido por el perfil IPS
-            if (!entry.resource.effectiveDateTime && !entry.resource.effectivePeriod) {
-                entry.resource.effectiveDateTime = new Date().toISOString();
-            }
-        }
+    //         // Agregar effective[x] requerido por el perfil IPS
+    //         if (!entry.resource.effectiveDateTime && !entry.resource.effectivePeriod) {
+    //             entry.resource.effectiveDateTime = new Date().toISOString();
+    //         }
+    //     }
 
-        // Refuerzo: filtrar OpenMRS y ordenar codings de Condition
-        if (entry.resource?.resourceType === 'Condition' && Array.isArray(entry.resource.code?.coding)) {
-            entry.resource.code.coding = entry.resource.code.coding
-                .filter(c => !!c.system && c.system !== 'http://openmrs.org/concepts');
-            if (entry.resource.code.coding.length > 0) {
-                entry.resource.code.coding = sortCodingsPreferred(entry.resource.code.coding);
-            }
-        }
+    //     // Refuerzo: filtrar OpenMRS y ordenar codings de Condition
+    //     if (entry.resource?.resourceType === 'Condition' && Array.isArray(entry.resource.code?.coding)) {
+    //         entry.resource.code.coding = entry.resource.code.coding
+    //             .filter(c => !!c.system && c.system !== 'http://openmrs.org/concepts');
+    //         if (entry.resource.code.coding.length > 0) {
+    //             entry.resource.code.coding = sortCodingsPreferred(entry.resource.code.coding);
+    //         }
+    //     }
 
 
-    });
+    // });
 
     // 6.bis Corregir AllergyIntolerance - absent/unknown 'no-allergy-info'
-    summaryBundle.entry?.forEach(entry => {
-        const res = entry.resource;
-        if (res?.resourceType === 'AllergyIntolerance' && Array.isArray(res.code?.coding)) {
-            // 2.1 Filtrar codings sin system y los locales OpenMRS
-            res.code.coding = res.code.coding.filter(c =>
-                !!c.system && c.system !== 'http://openmrs.org/concepts'
-            );
-            // 2.2 Si quedan codings, ordenar con SNOMED primero
-            if (res.code.coding.length > 0) {
-                res.code.coding = sortCodingsPreferred(res.code.coding);
-            }
-            // 2.3 Refuerzo absent/unknown (mantener)
-            res.code.coding.forEach(c => {
-                if (c.code === 'no-allergy-info' || c.display === 'No information about allergies') {
-                    c.system = 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips';
-                    c.code = 'no-allergy-info';
-                    if (!c.display) c.display = 'No information about allergies';
-                }
-            });
-        }
-    });
+    // summaryBundle.entry?.forEach(entry => {
+    //     const res = entry.resource;
+    //     if (res?.resourceType === 'AllergyIntolerance' && Array.isArray(res.code?.coding)) {
+    //         // 2.1 Filtrar codings sin system y los locales OpenMRS
+    //         res.code.coding = res.code.coding.filter(c =>
+    //             !!c.system && c.system !== 'http://openmrs.org/concepts'
+    //         );
+    //         // 2.2 Si quedan codings, ordenar con SNOMED primero
+    //         if (res.code.coding.length > 0) {
+    //             res.code.coding = sortCodingsPreferred(res.code.coding);
+    //         }
+    //         // 2.3 Refuerzo absent/unknown (mantener)
+    //         res.code.coding.forEach(c => {
+    //             if (c.code === 'no-allergy-info' || c.display === 'No information about allergies') {
+    //                 c.system = 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips';
+    //                 c.code = 'no-allergy-info';
+    //                 if (!c.display) c.display = 'No information about allergies';
+    //             }
+    //         });
+    //     }
+    // });
 
     // 6.ter - Corregir Immunization - absent/unknown 'no-immunization-info'
     summaryBundle.entry?.forEach(entry => {
@@ -2544,16 +2544,16 @@ function fixBundleValidationIssues(summaryBundle) {
     }
 
     // 8) Refuerzo: Composition.meta.profile debe contener lac-composition (racsel)
-    const LAC_COMPOSITION = LAC_PROFILES.COMPOSITION;
-    if (compositionEntry?.resource) {
-        compositionEntry.resource.meta = compositionEntry.resource.meta || {};
-        compositionEntry.resource.meta.profile = Array.isArray(compositionEntry.resource.meta.profile)
-            ? compositionEntry.resource.meta.profile
-            : [];
-        if (!compositionEntry.resource.meta.profile.includes(LAC_COMPOSITION)) {
-            compositionEntry.resource.meta.profile.push(LAC_COMPOSITION);
-        }
-    }
+    // const LAC_COMPOSITION = LAC_PROFILES.COMPOSITION;
+    // if (compositionEntry?.resource) {
+    //     compositionEntry.resource.meta = compositionEntry.resource.meta || {};
+    //     compositionEntry.resource.meta.profile = Array.isArray(compositionEntry.resource.meta.profile)
+    //         ? compositionEntry.resource.meta.profile
+    //         : [];
+    //     if (!compositionEntry.resource.meta.profile.includes(LAC_COMPOSITION)) {
+    //         compositionEntry.resource.meta.profile.push(LAC_COMPOSITION);
+    //     }
+    // }
 
     // 9) NUEVAS MEJORAS LAC: Patient identifiers con URN OIDs (solo si NO hay identifiers)
     const natOid = LAC_NATIONAL_ID_SYSTEM_OID;   // p.ej. 1.2.36.146.595.217.0.1
