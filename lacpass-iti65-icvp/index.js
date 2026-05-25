@@ -2330,20 +2330,20 @@ function fixBundleValidationIssues(summaryBundle) {
 
         // Secciones obligatorias (garantiza al menos una entry válida por slice)
         // Alergias: LOINC 48765-2 → AllergyIntolerance
-        ensureRequiredSectionEntry(summaryBundle, compositionEntry.resource, LOINC_CODES.ALLERGIES_SECTION, ['AllergyIntolerance']);
+        // ensureRequiredSectionEntry(summaryBundle, compositionEntry.resource, LOINC_CODES.ALLERGIES_SECTION, ['AllergyIntolerance']);
 
         // Inmunizaciones: LOINC 11369-6 → Immunization
         console.log('--- Ensuring Immunizations section entries');
         ensureRequiredSectionEntry(summaryBundle, compositionEntry.resource, LOINC_CODES.IMMUNIZATIONS_SECTION, ['Immunization']);
 
         // Problemas activos/lista de problemas: LOINC 11450-4 → Condition
-        ensureRequiredSectionEntry(summaryBundle, compositionEntry.resource, LOINC_CODES.PROBLEMS_SECTION, ['Condition']);
+        // ensureRequiredSectionEntry(summaryBundle, compositionEntry.resource, LOINC_CODES.PROBLEMS_SECTION, ['Condition']);
 
         // Medicación: LOINC 10160-0 → MedicationStatement o MedicationRequest
-        ensureRequiredSectionEntry(summaryBundle, compositionEntry.resource, LOINC_CODES.MEDICATIONS_SECTION, ['MedicationStatement','MedicationRequest']);
+        // ensureRequiredSectionEntry(summaryBundle, compositionEntry.resource, LOINC_CODES.MEDICATIONS_SECTION, ['MedicationStatement','MedicationRequest']);
 
         // Antecedentes (Past Illness Hx): LOINC 11348-0 → Condition
-        ensureRequiredSectionEntry(summaryBundle, compositionEntry.resource, LOINC_CODES.PAST_ILLNESS_SECTION, ['Condition']);
+        // ensureRequiredSectionEntry(summaryBundle, compositionEntry.resource, LOINC_CODES.PAST_ILLNESS_SECTION, ['Condition']);
     }
 
     // 2.bis Deduplicar y filtrar entries por tipo permitido en cada sección IPS
