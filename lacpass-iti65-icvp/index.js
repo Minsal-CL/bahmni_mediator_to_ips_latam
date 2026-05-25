@@ -1284,10 +1284,6 @@ function toIso2Country(input) {
 // - loincCode: código LOINC de la sección (p.ej. 48765-2 Alergias, 11450-4 Problemas, 11348-0 Antecedentes)
 // - allowedTypes: tipos de recurso aceptados por el slice (p.ej. ['AllergyIntolerance'])
 function ensureRequiredSectionEntry(summaryBundle, comp, loincCode, allowedTypes) {
-    // Se desactiva la función mediante un return temprano.
-    // Esto evitará que se inyecten "placeholders" u otros datos sintéticos en el Bundle.
-    return;
-    /*
     if (!comp?.section) return;
     const sec = comp.section.find(s => s.code?.coding?.some(c => c.system === 'http://loinc.org' && c.code === loincCode));
     if (!sec) return;
@@ -1327,6 +1323,8 @@ function ensureRequiredSectionEntry(summaryBundle, comp, loincCode, allowedTypes
             return;
         }
         // Si no había ninguna Condition para esta sección, caeremos al fallback más abajo (placeholder)
+        // Añadimos return para terminar aquí sin inyectar diagnósticos sintéticos
+        return;
     }
 
 
@@ -1357,99 +1355,6 @@ function ensureRequiredSectionEntry(summaryBundle, comp, loincCode, allowedTypes
 
     console.log(`🔍 Ensuring entries for section LOINC ${loincCode} with allowed:`, allowedTypes);
     console.log('---',sec.entry);
-
-    // Si tampoco hay candidatos: inyectar placeholder IPS "no known …"
-    const patientEntry = (summaryBundle.entry || []).find(e => e.resource?.resourceType === 'Patient');
-    const patRef = patientEntry?.fullUrl || (patientEntry?.resource?.id ? `Patient/${patientEntry.resource.id}` : null);
-    const nowIso = new Date().toISOString();
-    let placeholder = null;
-
-    if (allowedTypes.includes('AllergyIntolerance')) {
-        placeholder = {
-            fullUrl: 'urn:uuid:allergy-none',
-            resource: {
-                resourceType: 'AllergyIntolerance',
-                meta: { profile: [IPS_PROFILES.ALLERGY_INTOLERANCE] },
-                clinicalStatus: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical', code: 'active' }] },
-                verificationStatus: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/allergyintolerance-verification', code: 'unconfirmed' }] },
-                code: {
-                    coding: [
-                        { system: 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips', code: 'no-known-allergies', display: 'No known allergies' },
-                        { system: 'http://snomed.info/sct', code: '716186003', display: 'No known allergy (situation)' },
-                        { system: CS_DATA_ABSENT_REASON, code: 'unknown' }
-                    ],
-                    text: 'No known allergies'
-                },
-                patient: patRef ? { reference: patRef } : undefined
-            }
-        };
-    } else if (allowedTypes.includes('MedicationStatement')) {
-        placeholder = {
-            fullUrl: 'urn:uuid:meds-none',
-            resource: {
-                resourceType: 'MedicationStatement',
-                meta: { profile: [IPS_PROFILES.MEDICATION_STATEMENT] },
-                status: 'active',
-                medicationCodeableConcept: {
-                    coding: [
-                        { system: 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips', code: 'no-known-medications', display: 'No known medications' },
-                        { system: CS_DATA_ABSENT_REASON, code: 'unknown' }
-                    ],
-                    text: 'No known medications'
-                },
-                subject: patRef ? { reference: patRef } : undefined,
-                effectiveDateTime: nowIso
-            }
-        };
-    } else if (allowedTypes.includes('Immunization')) {
-        // Placeholder de sección solo si realmente quieres declarar "sin info de vacunas"
-        // placeholder = {
-        //     fullUrl: 'urn:uuid:immu-none',
-        //     resource: {
-        //         resourceType: 'Immunization',
-        //         meta: { profile: [IPS_PROFILES.IMMUNIZATION] },
-        //         status: 'not-done',
-        //         vaccineCode: {
-        //             coding: [{
-        //                 system: 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips',
-        //                 code: 'no-immunization-info',
-        //                 display: 'No information about immunizations'
-        //             }]
-        //         },
-        //         subject: patRef ? { reference: patRef } : undefined,
-        //         occurrenceDateTime: nowIso
-        //     }
-        // };
-    } else if (allowedTypes.includes('Condition')) {
-        const isPast = loincCode === LOINC_CODES.PAST_ILLNESS_SECTION;
-        placeholder = {
-            fullUrl: isPast ? 'urn:uuid:pasthx-none' : 'urn:uuid:problem-none',
-            resource: {
-                resourceType: 'Condition',
-                meta: { profile: [IPS_PROFILES.CONDITION] },
-                category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/condition-category', code: 'problem-list-item' }] }],
-                code: {
-                    coding: [
-                        { system: 'http://hl7.org/fhir/uv/ips/CodeSystem/absent-unknown-uv-ips', code: 'no-known-problems', display: 'No known problems' },
-                        { system: CS_DATA_ABSENT_REASON, code: 'unknown' }
-                    ],
-                    text: isPast ? 'No known past illnesses' : 'No known problems'
-                },
-                subject: patRef ? { reference: patRef } : undefined
-            }
-        };
-    }
-
-    if (placeholder) {
-        summaryBundle.entry = Array.isArray(summaryBundle.entry) ? summaryBundle.entry : [];
-        summaryBundle.entry.push(placeholder);
-        sec.entry = Array.isArray(sec.entry) ? sec.entry : [];
-        sec.entry.push({ reference: placeholder.fullUrl });
-        // dedupe entries
-        sec.entry = sec.entry.filter((e, i, arr) => i === arr.findIndex(v => v.reference === e.reference));
-    }
-    console.log('--- After adding placeholder:',sec.entry);
-    */
 }
 
 
