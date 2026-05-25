@@ -1284,6 +1284,10 @@ function toIso2Country(input) {
 // - loincCode: código LOINC de la sección (p.ej. 48765-2 Alergias, 11450-4 Problemas, 11348-0 Antecedentes)
 // - allowedTypes: tipos de recurso aceptados por el slice (p.ej. ['AllergyIntolerance'])
 function ensureRequiredSectionEntry(summaryBundle, comp, loincCode, allowedTypes) {
+    // Se desactiva la función mediante un return temprano.
+    // Esto evitará que se inyecten "placeholders" u otros datos sintéticos en el Bundle.
+    return;
+    /*
     if (!comp?.section) return;
     const sec = comp.section.find(s => s.code?.coding?.some(c => c.system === 'http://loinc.org' && c.code === loincCode));
     if (!sec) return;
@@ -1445,6 +1449,7 @@ function ensureRequiredSectionEntry(summaryBundle, comp, loincCode, allowedTypes
         sec.entry = sec.entry.filter((e, i, arr) => i === arr.findIndex(v => v.reference === e.reference));
     }
     console.log('--- After adding placeholder:',sec.entry);
+    */
 }
 
 
