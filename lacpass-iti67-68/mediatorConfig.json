@@ -15,7 +15,7 @@
           "path": "/regional/DocumentReference",
           "primary": true,
           "type": "http",
-          "passThroughHeaders": []
+          "passThroughHeaders": ["Authorization"]
         }
       ],
       "allow": ["admin"],
@@ -32,7 +32,7 @@
           "port": "8006",
           "primary": true,
           "type": "http",
-          "passThroughHeaders": []
+          "passThroughHeaders": ["Authorization"]
         }
       ],
       "allow": ["admin"],
@@ -50,7 +50,7 @@
           "path": "/regional/_health",
           "primary": true,
           "type": "http",
-          "passThroughHeaders": []
+          "passThroughHeaders": ["Authorization"]
         }
       ],
       "allow": ["admin"],

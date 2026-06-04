@@ -95,9 +95,14 @@ app.get('/regional/DocumentReference', async (req, res) => {
       params['patient.identifier'] = params['patient.identifier'].replace(/\*/g, '%2A');
     }
     const url = `${fhirBase()}/DocumentReference`;
+    const forwardHeaders = { Accept: 'application/fhir+json' };
+    if (req.headers && req.headers.authorization) {
+      forwardHeaders.Authorization = req.headers.authorization;
+    }
+
     const response = await axios.get(url, {
       params,
-      headers: { Accept: 'application/fhir+json' },
+      headers: forwardHeaders,
       httpsAgent: axios.defaults.httpsAgent,
       timeout: 60000
     });
@@ -113,9 +118,14 @@ app.get('/regional/DocumentReference', async (req, res) => {
 app.get('/regional/Bundle/:id', async (req, res) => {
   try {
     const url = `${fhirBase()}/Bundle/${encodeURIComponent(req.params.id)}`;
+    const forwardHeaders = { Accept: 'application/fhir+json' };
+    if (req.headers && req.headers.authorization) {
+      forwardHeaders.Authorization = req.headers.authorization;
+    }
+
     const response = await axios.get(url, {
       params: { _format: 'json', ...req.query },
-      headers: { Accept: 'application/fhir+json' },
+      headers: forwardHeaders,
       httpsAgent: axios.defaults.httpsAgent,
       timeout: 60000
     });
