@@ -2913,9 +2913,10 @@ app.post('/icvp/_iti65', async (req, res) => {
     return res.status(400).json({ error: 'Invalid Bundle or missing uuid' });
   }
 
-    //if (String(FEATURE_ICVP_VACCINES_ONLY).toLowerCase() === 'true') {
-    //    pruneToVaccinesOnly(summaryBundle);
-    //}
+    if (isTrue(FEATURE_ICVP_VACCINES_ONLY)) {
+        console.log('🔧 FEATURE_ICVP_VACCINES_ONLY=true: pruning bundle to vaccine-only ICVP resources');
+        pruneToVaccinesOnly(summaryBundle);
+    }
 
     try {
 
@@ -3299,5 +3300,5 @@ app.post('/icvp/_iti65', async (req, res) => {
   }
 });
 
-const PORT = process.env.LACPASS_ITI65_PORT_ICVP || 8011;
-app.listen(PORT, () => console.log(`LACPASS→ITI65 icvp Mediator listening on port ${PORT}`));
+const PORT = process.env.LACPASS_ITI67_68_PORT_ICVP || process.env.LACPASS_ITI67_PORT_ICVP || process.env.LACPASS_ITI65_PORT_ICVP || 8011;
+app.listen(PORT, () => console.log(`LACPASS→ITI67-68 icvp Mediator listening on port ${PORT}`));

@@ -26,7 +26,7 @@ const {
   VHL_RECIPIENT,
 
   // ICVP (operación $icvp sobre Bundle/{id})
-  ICVP_BASE_URL = 'http://10.68.174.221:3000/fhir',
+  ICVP_BASE_URL,
   ICVP_BASIC_USER,
   ICVP_BASIC_PASS,
 
@@ -58,6 +58,12 @@ registerMediator(openhimConfig, mediatorConfig, (err) => {
   console.log('Mediator registrado en OpenHIM.');
   activateHeartbeat(openhimConfig);
 });
+
+// Requerir ICVP_BASE_URL en entorno para evitar hardcode
+if (!ICVP_BASE_URL) {
+  console.error('ENV error: ICVP_BASE_URL is required. Set ICVP_BASE_URL in your .env or environment.');
+  process.exit(1);
+}
 
 // ======== App ========
 const app = express();
@@ -122,7 +128,7 @@ function buildUpstreamJsonHeadersICVP() {
  * 4) ICVP — generar respuestas $icvp por cada Immunization del Bundle
  *    POST /icvpcert/_from-bundle
  *    Body: Bundle FHIR (objeto o string)
- *    Env: ICVP_BASE_URL (default http://10.68.174.221:3000/fhir)
+ *    Env: ICVP_BASE_URL (required, e.g. https://signer.nodonacionalph4h-dev.minsal.cl/fhir)
  *         ICVP_BASIC_USER / ICVP_BASIC_PASS (opcional)
  * =======================================================*/
 app.post('/icvpcert/_from-bundle', async (req, res) => {
