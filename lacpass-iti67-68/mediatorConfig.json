@@ -23,6 +23,24 @@
       "type": "http"
     },
     {
+      "name": "ITI-67 DocumentReference Preflight Channel",
+      "urlPattern": "^/regional/DocumentReference$",
+      "routes": [
+        {
+          "name": "ITI-67 DocumentReference Route",
+          "host": "10.68.174.209",
+          "port": "8006",
+          "path": "/regional/DocumentReference",
+          "primary": true,
+          "type": "http",
+          "passThroughHeaders": ["Authorization"]
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["OPTIONS"],
+      "type": "http"
+    },
+    {
       "name": "ITI-68 Bundle Retrieve Channel",
       "urlPattern": "^/regional/Bundle/.*$",
       "routes": [
@@ -37,6 +55,23 @@
       ],
       "allow": ["admin"],
       "methods": ["GET"],
+      "type": "http"
+    },
+    {
+      "name": "ITI-68 Bundle Preflight Channel",
+      "urlPattern": "^/regional/Bundle/.*$",
+      "routes": [
+        {
+          "name": "ITI-68 Bundle Route",
+          "host": "10.68.174.209",
+          "port": "8006",
+          "primary": true,
+          "type": "http",
+          "passThroughHeaders": ["Authorization"]
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["OPTIONS"],
       "type": "http"
     },
     {
@@ -65,9 +100,19 @@
       "method": "get"
     },
     {
+      "name": "documentreference-preflight-endpoint",
+      "path": "/regional/DocumentReference",
+      "method": "options"
+    },
+    {
       "name": "bundle-retrieve-endpoint",
       "path": "/regional/Bundle/:id",
       "method": "get"
+    },
+    {
+      "name": "bundle-preflight-endpoint",
+      "path": "/regional/Bundle/:id",
+      "method": "options"
     },
     {
       "name": "health-endpoint",

@@ -42,30 +42,40 @@ const app = express();
 app.use(express.json({ limit: '20mb' }));
 
 // CORS middleware (antes de rutas)
+const allowedOrigins = CORS_ORIGIN
+  ? CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+  : [];
+
 app.use((req, res, next) => {
     const origin = req.headers.origin;
 
-    if (CORS_ORIGIN) {
-        // convierte la lista de orígenes en un array
-        const allowedOrigins = CORS_ORIGIN.split(',').map(o => o.trim());
-
-        if (allowedOrigins.includes(origin)) {
-            res.setHeader('Access-Control-Allow-Origin', origin);
-        }
-    } else if (origin) {
+    if (origin && allowedOrigins.length > 0 && allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else if (origin && allowedOrigins.length === 0) {
         res.setHeader('Access-Control-Allow-Origin', origin);
     }
 
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-OpenHIM-ClientID');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-OpenHIM-ClientID'
+    );
+    res.setHeader('Access-Control-Expose-Headers', 'X-OpenHIM-TransactionID');
 
     if (req.method === 'OPTIONS') {
         return res.sendStatus(204);
     }
     next();
 });
+
+function requireAuthorization(req, res, next) {
+    if (!req.headers.authorization) {
+        return res.status(401).json({ error: 'Authorization header required' });
+    }
+    next();
+}
 
 // normalize base FHIR endpoint
 function fhirBase() {
@@ -87,7 +97,7 @@ app.use((req, _res, next) => {
 app.get('/regional/_health', (_req, res) => res.status(200).send('OK'));
 
 // Transparent passthrough for DocumentReference search (ITI-67 semantics)
-app.get('/regional/DocumentReference', async (req, res) => {
+app.get('/regional/DocumentReference', requireAuthorization, async (req, res) => {
   try {
   // forward all query params, asegurando escape de '*' como '%2A'
     const params = { ...req.query };
@@ -115,7 +125,7 @@ app.get('/regional/DocumentReference', async (req, res) => {
 });
 
 // Transparent passthrough for Bundle retrieval (ITI-68 semantics)
-app.get('/regional/Bundle/:id', async (req, res) => {
+app.get('/regional/Bundle/:id', requireAuthorization, async (req, res) => {
   try {
     const url = `${fhirBase()}/Bundle/${encodeURIComponent(req.params.id)}`;
     const forwardHeaders = { Accept: 'application/fhir+json' };
