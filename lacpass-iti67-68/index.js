@@ -97,7 +97,7 @@ app.use((req, _res, next) => {
 app.get('/regional/_health', (_req, res) => res.status(200).send('OK'));
 
 // Transparent passthrough for DocumentReference search (ITI-67 semantics)
-app.get('/regional/DocumentReference', requireAuthorization, async (req, res) => {
+app.get('/regional/DocumentReference', async (req, res) => {
   try {
   // forward all query params, asegurando escape de '*' como '%2A'
     const params = { ...req.query };
@@ -106,9 +106,9 @@ app.get('/regional/DocumentReference', requireAuthorization, async (req, res) =>
     }
     const url = `${fhirBase()}/DocumentReference`;
     const forwardHeaders = { Accept: 'application/fhir+json' };
-    if (req.headers && req.headers.authorization) {
-      forwardHeaders.Authorization = req.headers.authorization;
-    }
+    //if (req.headers && req.headers.authorization) {
+   //   forwardHeaders.Authorization = req.headers.authorization;
+   // }
 
     const response = await axios.get(url, {
       params,
@@ -125,13 +125,13 @@ app.get('/regional/DocumentReference', requireAuthorization, async (req, res) =>
 });
 
 // Transparent passthrough for Bundle retrieval (ITI-68 semantics)
-app.get('/regional/Bundle/:id', requireAuthorization, async (req, res) => {
+app.get('/regional/Bundle/:id', async (req, res) => {
   try {
     const url = `${fhirBase()}/Bundle/${encodeURIComponent(req.params.id)}`;
     const forwardHeaders = { Accept: 'application/fhir+json' };
-    if (req.headers && req.headers.authorization) {
-      forwardHeaders.Authorization = req.headers.authorization;
-    }
+    //if (req.headers && req.headers.authorization) {
+    //  forwardHeaders.Authorization = req.headers.authorization;
+    //}
 
     const response = await axios.get(url, {
       params: { _format: 'json', ...req.query },
