@@ -70,12 +70,12 @@ app.use((req, res, next) => {
     next();
 });
 
-function requireAuthorization(req, res, next) {
-    if (!req.headers.authorization) {
-        return res.status(401).json({ error: 'Authorization header required' });
-    }
-    next();
-}
+// function requireAuthorization(req, res, next) {
+//     if (!req.headers.authorization) {
+//         return res.status(401).json({ error: 'Authorization header required' });
+//     }
+//     next();
+// }
 
 // normalize base FHIR endpoint
 function fhirBase() {

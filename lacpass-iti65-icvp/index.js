@@ -2282,8 +2282,7 @@ function fixBundleValidationIssues(summaryBundle) {
                 value: patientEntry.resource.id || 'unknown'
             }];*/
         }
-
-        ensureLacPatientProfile(patientEntry.resource);
+        
         ensureIpsPatientProfile(patientEntry.resource);
         if (Array.isArray(patientEntry.resource.address)) {
             patientEntry.resource.address.forEach(a => {
