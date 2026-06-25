@@ -40,12 +40,45 @@ if (NODE_ENV === 'development') {
 
 // Registrar y latido
 registerMediator(openhimConfig, mediatorConfig, (err) => {
-    if (err) {
-        console.error('Error registrando mediator en OpenHIM:', err);
-        process.exit(1);
-    }
-    console.log('Mediator registrado en OpenHIM.');
-    activateHeartbeat(openhimConfig);
+        if (err) {
+                console.error('Error registrando mediator en OpenHIM:', err);
+                process.exit(1);
+        }
+        console.log('Mediator registrado en OpenHIM.');
+
+        const auth = { username: openhimConfig.username, password: openhimConfig.password };
+        const channels = mediatorConfig.defaultChannelConfig || [];
+
+        Promise.all(
+            channels.map(ch =>
+                axios.post(`${openhimConfig.apiURL}/channels`, { ...ch, mediator_urn: mediatorConfig.urn }, { auth })
+                    .then(() => console.log(`✅ Channel created: ${ch.name}`))
+                    .catch(async (e) => {
+                        const msg = e?.response?.data || e?.message || e.toString();
+                        if (String(msg).toLowerCase().includes('duplicate') || e?.response?.status === 409) {
+                            try {
+                                const q = encodeURIComponent(ch.name);
+                                const res = await axios.get(`${openhimConfig.apiURL}/channels?name=${q}`, { auth });
+                                const existing = Array.isArray(res.data) ? res.data[0] : res.data;
+                                const id = existing && (existing._id || existing.id || existing.channelId || existing._uid);
+                                if (id) {
+                                    await axios.put(`${openhimConfig.apiURL}/channels/${id}`, { ...ch, mediator_urn: mediatorConfig.urn }, { auth });
+                                    console.log(`♻️ Channel updated: ${ch.name}`);
+                                } else {
+                                    console.log(`ℹ️ Channel exists but id unknown: ${ch.name}`);
+                                }
+                            } catch (uerr) {
+                                console.error(`❌ Updating channel ${ch.name} failed:`, uerr?.response?.data || uerr?.message || uerr);
+                            }
+                        } else {
+                            console.error(`❌ Channel ${ch.name} error:`, msg);
+                        }
+                    })
+            )
+        ).then(() => {
+            console.log('✅ All channels processed');
+            activateHeartbeat(openhimConfig);
+        });
 });
 
 // ======== App ========
