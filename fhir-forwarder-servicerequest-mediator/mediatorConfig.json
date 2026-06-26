@@ -1,0 +1,48 @@
+{
+  "urn": "urn:mediator:fhir-forwarder-servicerequest",
+  "version": "1.0.0",
+  "name": "FHIR Event Forwarder ServiceRequest Mediator",
+  "description": "Toma el formulario Interconsulta Transfronteriza (OpenMRS obs) y construye un ServiceRequest FHIR, referenciando el último IPS del paciente (ITI-67). Lo reenvía al nodo nacional vía OpenHIM.",
+  "defaultChannelConfig": [
+    {
+      "name": "FHIR Event Forwarder ServiceRequest Mediator",
+      "urlPattern": "^/forwarderservicerequest/_event$",
+      "routes": [
+        {
+          "name": "FHIR Event Forwarder ServiceRequest Mediator Route",
+          "host": "10.68.174.209",
+          "path": "/forwarderservicerequest/_event",
+          "port": "8016",
+          "primary": true,
+          "type": "http"
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["POST"],
+      "type": "http"
+    },
+    {
+      "name": "FHIR Event Forwarder ServiceRequest Mediator Health Channel",
+      "urlPattern": "^/forwarderservicerequest/_health$",
+      "routes": [
+        {
+          "name": "FHIR Event Forwarder ServiceRequest Mediator Health Route",
+          "host": "10.68.174.209",
+          "path": "/forwarderservicerequest/_health",
+          "port": "8016",
+          "primary": true,
+          "type": "http"
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["GET"],
+      "type": "http"
+    }
+  ],
+  "endpoints": [
+    { "name": "event-endpoint",  "path": "/forwarderservicerequest/_event",  "method": "post" },
+    { "name": "health-endpoint", "path": "/forwarderservicerequest/_health", "method": "get" }
+  ],
+  "heartbeatPath": "/forwarderservicerequest/_health",
+  "heartbeatInterval": 30000
+}
