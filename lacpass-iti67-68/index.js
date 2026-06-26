@@ -35,7 +35,47 @@ registerMediator(openhimConfig, mediatorConfig, err => {
     console.error('❌ Registration error:', err);
     process.exit(1);
   }
-  activateHeartbeat(openhimConfig);
+  console.log('✅ Mediator registered');
+
+  // Create or update channels in OpenHIM so container restarts re-sync channels
+  const auth = { username: openhimConfig.username, password: openhimConfig.password };
+  const channels = mediatorConfig.defaultChannelConfig || [];
+
+  Promise.all(
+    channels.map(ch =>
+      axios.post(
+        `${openhimConfig.apiURL}/channels`,
+        { ...ch, mediator_urn: mediatorConfig.urn },
+        { auth }
+      )
+      .then(() => console.log(`✅ Channel created: ${ch.name}`))
+      .catch(async (e) => {
+        const msg = e?.response?.data || e?.message || e.toString();
+        // If channel already exists, try to find it and update (PUT)
+        if (String(msg).toLowerCase().includes('duplicate') || e?.response?.status === 409) {
+          try {
+            const q = encodeURIComponent(ch.name);
+            const res = await axios.get(`${openhimConfig.apiURL}/channels?name=${q}`, { auth });
+            const existing = Array.isArray(res.data) ? res.data[0] : res.data;
+            const id = existing && (existing._id || existing.id || existing.channelId || existing._uid);
+            if (id) {
+              await axios.put(`${openhimConfig.apiURL}/channels/${id}`, { ...ch, mediator_urn: mediatorConfig.urn }, { auth });
+              console.log(`♻️ Channel updated: ${ch.name}`);
+            } else {
+              console.log(`ℹ️ Channel already exists but could not determine id: ${ch.name}`);
+            }
+          } catch (uerr) {
+            console.error(`❌ Updating channel ${ch.name} failed:`, uerr?.response?.data || uerr?.message || uerr);
+          }
+        } else {
+          console.error(`❌ Channel ${ch.name} error:`, msg);
+        }
+      })
+    )
+  ).then(() => {
+    console.log('✅ All channels processed');
+    activateHeartbeat(openhimConfig);
+  });
 });
 
 const app = express();
@@ -70,12 +110,12 @@ app.use((req, res, next) => {
     next();
 });
 
-function requireAuthorization(req, res, next) {
-    if (!req.headers.authorization) {
-        return res.status(401).json({ error: 'Authorization header required' });
-    }
-    next();
-}
+// function requireAuthorization(req, res, next) {
+//     if (!req.headers.authorization) {
+//         return res.status(401).json({ error: 'Authorization header required' });
+//     }
+//     next();
+// }
 
 // normalize base FHIR endpoint
 function fhirBase() {
@@ -97,7 +137,7 @@ app.use((req, _res, next) => {
 app.get('/regional/_health', (_req, res) => res.status(200).send('OK'));
 
 // Transparent passthrough for DocumentReference search (ITI-67 semantics)
-app.get('/regional/DocumentReference', requireAuthorization, async (req, res) => {
+app.get('/regional/DocumentReference', async (req, res) => {
   try {
   // forward all query params, asegurando escape de '*' como '%2A'
     const params = { ...req.query };
@@ -106,9 +146,9 @@ app.get('/regional/DocumentReference', requireAuthorization, async (req, res) =>
     }
     const url = `${fhirBase()}/DocumentReference`;
     const forwardHeaders = { Accept: 'application/fhir+json' };
-    if (req.headers && req.headers.authorization) {
-      forwardHeaders.Authorization = req.headers.authorization;
-    }
+    //if (req.headers && req.headers.authorization) {
+   //   forwardHeaders.Authorization = req.headers.authorization;
+   // }
 
     const response = await axios.get(url, {
       params,
@@ -125,13 +165,13 @@ app.get('/regional/DocumentReference', requireAuthorization, async (req, res) =>
 });
 
 // Transparent passthrough for Bundle retrieval (ITI-68 semantics)
-app.get('/regional/Bundle/:id', requireAuthorization, async (req, res) => {
+app.get('/regional/Bundle/:id', async (req, res) => {
   try {
     const url = `${fhirBase()}/Bundle/${encodeURIComponent(req.params.id)}`;
     const forwardHeaders = { Accept: 'application/fhir+json' };
-    if (req.headers && req.headers.authorization) {
-      forwardHeaders.Authorization = req.headers.authorization;
-    }
+    //if (req.headers && req.headers.authorization) {
+    //  forwardHeaders.Authorization = req.headers.authorization;
+    //}
 
     const response = await axios.get(url, {
       params: { _format: 'json', ...req.query },

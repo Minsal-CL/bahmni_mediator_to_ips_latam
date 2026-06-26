@@ -36,7 +36,6 @@
           "passThroughHeaders": ["Authorization"]
         }
       ],
-      "allow": ["admin"],
       "methods": ["OPTIONS"],
       "type": "http"
     },
@@ -70,7 +69,6 @@
           "passThroughHeaders": ["Authorization"]
         }
       ],
-      "allow": ["admin"],
       "methods": ["OPTIONS"],
       "type": "http"
     },
