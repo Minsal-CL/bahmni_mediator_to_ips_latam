@@ -70,8 +70,8 @@ const CONCEPT = {
   REFERRED_TO:      process.env.SR_CONCEPT_REFERRED_TO      || '9bb0795c-4ff0-0305-1990-000000000042', // -> code.text
   REASON_TEXT:      process.env.SR_CONCEPT_REASON_TEXT      || '164359AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', // -> reasonCode.text
   CLINICAL_HISTORY: process.env.SR_CONCEPT_CLINICAL_HISTORY || '9bb0795c-4ff0-0305-1990-000000000043', // -> note.text (Texto de carta)
-  COUNTRY_DEST:     process.env.SR_CONCEPT_COUNTRY_DEST     || '96e435ad-e606-5f88-a78a-6f037bab4b7b', // -> Organization destino (address.country)
-  ORG_DEST:         process.env.SR_CONCEPT_ORG_DEST         || '2ba9e0a3-97fe-5ce8-8bca-f291b7ce7e8e'  // -> Organization destino (name)
+  COUNTRY_DEST:     process.env.SR_CONCEPT_COUNTRY_DEST     || '19110fa3-2243-4e7d-8092-afc525573f3a', // -> Organization destino (address.country); answers = países CIEL
+  ORG_DEST:         process.env.SR_CONCEPT_ORG_DEST         || '75cf9a9e-8bdf-4f76-a701-fa6f05f72e36'  // -> Organization destino (name)
 }
 
 // Constantes FHIR (configurables). status/intent son obligatorios en ServiceRequest R4.
@@ -179,7 +179,8 @@ function patientNationalId(patient) {
 }
 async function fetchLatestIps(nationalId) {
   if (!nationalId) { logStep('ⓘ Sin identificador nacional para ITI-67'); return undefined }
-  const ensured = String(nationalId).replace(/^RUN\*/i, '')
+  // El identificador puede venir con prefijo tipo "rut*", "RUN*", etc. — quitamos cualquier "<letras>*"
+  const ensured = String(nationalId).replace(/^[A-Za-z]+\*/, '').trim()
   const url = `${REGIONAL_BASE}/DocumentReference` +
     `?patient.identifier=${encodeURIComponent(ensured)}&type=${IPS_TYPE_LOINC}&_sort=-_lastUpdated&_count=1`
   try {
