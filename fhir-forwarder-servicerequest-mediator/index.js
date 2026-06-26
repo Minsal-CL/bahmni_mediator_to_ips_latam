@@ -84,8 +84,10 @@ const IPS_TYPE_LOINC = process.env.IPS_TYPE_LOINC || '60591-5' // LOINC "Patient
 const REGIONAL_BASE  = (process.env.IPS_REGIONAL_BASE || 'https://apiopenhim.nodonacionalph4h-dev.minsal.cl/regional').replace(/\/$/, '')
 const IPS_BASIC_USER = process.env.IPS_BASIC_USER || process.env.OPENHIM_USER
 const IPS_BASIC_PASS = process.env.IPS_BASIC_PASS || process.env.OPENHIM_PASS
-// El identificador nacional (RUN/RUT) es el que el dashboard usa como patient.identifier
+// Identificadores con los que buscar el IPS (ITI-67), en orden de preferencia:
+// RUN/RUT (paciente chileno) y luego Pasaporte (extranjero — caso típico transfronterizo).
 const NATIONAL_ID_TYPE_TEXT = process.env.SR_NATIONAL_ID_TYPE_TEXT || 'Patient Identifier'
+const PASSPORT_ID_TYPE_TEXT = process.env.SR_PASSPORT_ID_TYPE_TEXT || 'Pasaporte'
 
 // ============================================================================
 // Fuentes (proxy FHIR de OpenMRS) y destino (nodo nacional)
@@ -172,36 +174,48 @@ function pickAuthoredOn(observations, enc) {
 // ============================================================================
 // IPS: último DocumentReference del paciente (ITI-67), igual que el dashboard
 // ============================================================================
-function patientNationalId(patient) {
+// Identificadores candidatos para buscar el IPS, en orden: RUN/RUT, luego Pasaporte, luego el resto.
+// Se limpia cualquier prefijo de tipo ("rut*", "RUN*", "PPN*", …) antes de usarlos.
+function patientSearchIdentifiers(patient) {
   const ids = Array.isArray(patient?.identifier) ? patient.identifier : []
-  const match = ids.find(id => (id.type?.text || '') === NATIONAL_ID_TYPE_TEXT)
-  return (match || ids[0])?.value
+  const byType = t => ids.filter(id => (id.type?.text || '') === t).map(id => id.value)
+  const ordered = [...byType(NATIONAL_ID_TYPE_TEXT), ...byType(PASSPORT_ID_TYPE_TEXT), ...ids.map(id => id.value)]
+  const clean = v => String(v || '').replace(/^[A-Za-z]+\*/, '').trim()
+  return [...new Set(ordered.map(clean).filter(Boolean))]
 }
-async function fetchLatestIps(nationalId) {
-  if (!nationalId) { logStep('ⓘ Sin identificador nacional para ITI-67'); return undefined }
-  // El identificador puede venir con prefijo tipo "rut*", "RUN*", etc. — quitamos cualquier "<letras>*"
-  const ensured = String(nationalId).replace(/^[A-Za-z]+\*/, '').trim()
+
+async function queryIpsByIdentifier(identifier) {
   const url = `${REGIONAL_BASE}/DocumentReference` +
-    `?patient.identifier=${encodeURIComponent(ensured)}&type=${IPS_TYPE_LOINC}&_sort=-_lastUpdated&_count=1`
-  try {
-    logStep('IPS ITI-67 GET', url)
-    const auth = IPS_BASIC_USER && IPS_BASIC_PASS ? { username: IPS_BASIC_USER, password: IPS_BASIC_PASS } : undefined
-    const res = await axios.get(url, {
-      headers: { Accept: 'application/fhir+json' },
-      auth, validateStatus: false, timeout: 15000,
-      httpsAgent: axios.defaults.httpsAgent || devAgent
-    })
-    if (res.status >= 400) { logStep('⚠️ ITI-67 status', res.status); return undefined }
-    const entry = (res.data?.entry || [])[0]
-    const dr = entry?.resource
-    if (!dr || dr.resourceType !== 'DocumentReference') { logStep('ⓘ Sin IPS para', ensured); return undefined }
-    // Referencia absoluta si el servidor entrega fullUrl; si no, relativa por id
-    const ref = entry.fullUrl || `${REGIONAL_BASE}/DocumentReference/${dr.id}`
-    return { reference: ref, display: `IPS (${dr.date || dr.meta?.lastUpdated || ''})`.trim() }
-  } catch (e) {
-    logStep('⚠️ Error ITI-67 (silenciado):', e?.message || e)
-    return undefined
+    `?patient.identifier=${encodeURIComponent(identifier)}&type=${IPS_TYPE_LOINC}&_sort=-_lastUpdated&_count=1`
+  logStep('IPS ITI-67 GET', url)
+  const auth = IPS_BASIC_USER && IPS_BASIC_PASS ? { username: IPS_BASIC_USER, password: IPS_BASIC_PASS } : undefined
+  const res = await axios.get(url, {
+    headers: { Accept: 'application/fhir+json' },
+    auth, validateStatus: false, timeout: 15000,
+    httpsAgent: axios.defaults.httpsAgent || devAgent
+  })
+  if (res.status >= 400) { logStep('⚠️ ITI-67 status', res.status, 'para', identifier); return undefined }
+  const entry = (res.data?.entry || [])[0]
+  const dr = entry?.resource
+  if (!dr || dr.resourceType !== 'DocumentReference') return undefined
+  const ref = entry.fullUrl || `${REGIONAL_BASE}/DocumentReference/${dr.id}`
+  return { reference: ref, display: `IPS (${dr.date || dr.meta?.lastUpdated || ''})`.trim() }
+}
+
+// Busca el último IPS del paciente probando cada identificador (RUN, Pasaporte, …) hasta encontrarlo.
+async function fetchLatestIps(patient) {
+  const candidates = patientSearchIdentifiers(patient)
+  if (!candidates.length) { logStep('ⓘ Paciente sin identificadores para ITI-67'); return undefined }
+  for (const id of candidates) {
+    try {
+      const hit = await queryIpsByIdentifier(id)
+      if (hit) return hit
+    } catch (e) {
+      logStep('⚠️ Error ITI-67 (silenciado) para', id, ':', e?.message || e)
+    }
   }
+  logStep('ⓘ Sin IPS para', candidates.join(', '))
+  return undefined
 }
 
 // ============================================================================
@@ -292,8 +306,8 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     // 5) Encounter (best-effort, para la referencia)
     try { await putToNode(enc); sent++ } catch (e) { logStep('⚠️ No se pudo subir Encounter:', e.message) }
 
-    // 6) Último IPS del paciente (ITI-67) -> supportingInfo
-    const ipsRef = await fetchLatestIps(patientNationalId(patient))
+    // 6) Último IPS del paciente (ITI-67, probando RUN y Pasaporte) -> supportingInfo
+    const ipsRef = await fetchLatestIps(patient)
 
     // 7) Construir y subir el ServiceRequest
     const authoredOn = pickAuthoredOn(observations, enc)
