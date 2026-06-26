@@ -3241,6 +3241,7 @@ app.post('/icvp/_iti65', async (req, res) => {
       masterIdentifier: { system: 'urn:ietf:rfc:3986', value: bundleUrn },
       status: 'current',
       type: compositionEntry.resource.type,
+      category: { coding: [{ system: ' http://loinc.org', code: '11369-6', display: 'History of Immunization' }] },
       subject: { reference: urlMap.get(`Patient/${patientEntry.resource.id}`) },
       date: summaryBundle.timestamp,
       content: [{
