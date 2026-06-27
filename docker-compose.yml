@@ -115,6 +115,13 @@ services:
       - "8016:8016"
     restart: unless-stopped
 
+  fhir-forwarder-medicationstatement-mediator:
+    build: ./fhir-forwarder-medicationstatement-mediator
+    env_file: ./.env
+    ports:
+      - "8017:8017"
+    restart: unless-stopped
+
 networks:
   default:
     name: lacpass-himnet

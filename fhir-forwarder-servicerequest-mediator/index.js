@@ -8,6 +8,7 @@ import axios from 'axios'
 import https from 'https'
 import { registerMediator, activateHeartbeat } from 'openhim-mediator-utils'
 import { createRequire } from 'module'
+import { randomUUID } from 'crypto'
 import { COUNTRY_UUID_TO_ISO2 } from './countryIso.js'
 const require = createRequire(import.meta.url)
 const mediatorConfig = require('./mediatorConfig.json')
@@ -87,6 +88,20 @@ const SR_ID_SYSTEM = process.env.SR_IDENTIFIER_SYSTEM || 'http://minsal.cl/sid/s
 // Organización de ORIGEN (requester) — el establecimiento solicitante chileno
 const ORIGIN_ORG_NAME    = process.env.SR_ORIGIN_ORG_NAME    || 'Hospital Clínico San Borja Arriarán'
 const ORIGIN_ORG_COUNTRY = process.env.SR_ORIGIN_ORG_COUNTRY || 'CL' // ISO 3166-1 alpha-2
+
+// ── Documento MHD "Interconsulta Transfronteriza" (Fase 2, IG RACSEL) ──
+// Si SR_MHD_ENABLED=true, además de subir el ServiceRequest, ensambla el documento
+// (Composition + Document Bundle + DocumentReference + List) y lo POSTea como transacción MHD (ITI-65).
+const MHD_ENABLED  = (process.env.SR_MHD_ENABLED || 'true').toLowerCase() === 'true'
+const MHD_ENDPOINT = (process.env.SR_MHD_ENDPOINT || `${(process.env.FHIR_NODE_URL || '').replace(/\/$/, '')}/fhir`).replace(/\/$/, '')
+const PROFILE_COMP    = process.env.SR_COMPOSITION_PROFILE || 'http://racsel.org/StructureDefinition/LACCompositionIT'
+const PROFILE_DOCBNDL = process.env.SR_DOCBUNDLE_PROFILE   || 'http://racsel.org/StructureDefinition/LACBundleDocIT'
+const PROFILE_DOCREF  = process.env.SR_DOCREF_PROFILE      || 'http://racsel.org/StructureDefinition/LACDocReferenceIT'
+const PROFILE_TXBNDL  = process.env.SR_TXBUNDLE_PROFILE    || 'http://racsel.org/StructureDefinition/LACBundleTransactionMHDIT'
+const COMP_TYPE    = { system: 'http://loinc.org', code: '11488-4', display: 'Consultation note' }
+const SECTION_CODE = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
+const SECTION_TITLE = 'Resultado de la Evaluación'
+const MASTER_ID_SYSTEM = process.env.SR_MASTER_ID_SYSTEM || 'urn:ietf:rfc:3986'
 
 // IPS (ITI-67) — mismo origen que el dashboard "IPS LAC" (ipsConfig.js)
 const IPS_TYPE_LOINC = process.env.IPS_TYPE_LOINC || '60591-5' // LOINC "Patient summary document"
@@ -280,6 +295,91 @@ function buildServiceRequest({ encId, patientRef, authoredOn, byConcept, ipsRef,
 }
 
 // ============================================================================
+// Documento MHD (Fase 2): Composition + Document Bundle + DocumentReference + List → transacción
+// ============================================================================
+function buildAuthorOrg() {
+  return { resourceType: 'Organization', meta: { profile: [PROFILE_ORG] }, name: ORIGIN_ORG_NAME, address: [{ country: ORIGIN_ORG_COUNTRY }] }
+}
+
+function buildComposition({ patientRef, authorUrl, srUrl, date, narrative }) {
+  return {
+    resourceType: 'Composition',
+    meta: { profile: [PROFILE_COMP] },
+    status: 'final',
+    type: { coding: [COMP_TYPE], text: COMP_TYPE.display },
+    subject: { reference: patientRef },
+    date,
+    author: [{ reference: authorUrl }],
+    title: 'Interconsulta Transfronteriza',
+    section: [{
+      title: SECTION_TITLE,
+      code: { coding: [SECTION_CODE] },
+      text: { status: 'generated', div: `<div xmlns="http://www.w3.org/1999/xhtml">${narrative}</div>` },
+      entry: [{ reference: srUrl }]
+    }]
+  }
+}
+
+// Ensambla la transacción MHD (LACBundleTransactionMHDIT) con el documento embebido.
+function buildMhdTransaction({ patient, serviceRequest, date }) {
+  const u = () => `urn:uuid:${randomUUID()}`
+  const patientRef = `Patient/${patient.id}`
+  const authorUrl = u(), compUrl = u(), srUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
+
+  const authorOrg   = buildAuthorOrg()
+  const narrative   = `Interconsulta a ${serviceRequest.code?.text || 'especialidad'} — destino: ${serviceRequest.performer?.[0]?.display || 's/d'}`
+  const composition = buildComposition({ patientRef, authorUrl, srUrl, date, narrative })
+
+  // Document Bundle (LACBundleDocIT, type document)
+  const docBundle = {
+    resourceType: 'Bundle', meta: { profile: [PROFILE_DOCBNDL] }, type: 'document',
+    identifier: { system: MASTER_ID_SYSTEM, value: docBundleUrl }, timestamp: date,
+    entry: [
+      { fullUrl: compUrl,    resource: composition },
+      { fullUrl: authorUrl,  resource: authorOrg },
+      { fullUrl: patientRef, resource: patient },
+      { fullUrl: srUrl,      resource: serviceRequest }
+    ]
+  }
+
+  // DocumentReference (LACDocReferenceIT)
+  const docRef = {
+    resourceType: 'DocumentReference', meta: { profile: [PROFILE_DOCREF] },
+    masterIdentifier: { system: MASTER_ID_SYSTEM, value: docBundleUrl },
+    status: 'current',
+    type: { coding: [COMP_TYPE] },
+    subject: { reference: patientRef },
+    date,
+    content: [{ attachment: { contentType: 'application/fhir+json', url: docBundleUrl } }]
+  }
+
+  // List / SubmissionSet (LACList)
+  const list = { resourceType: 'List', status: 'current', mode: 'working', date, entry: [{ item: { reference: docRefUrl } }] }
+
+  return {
+    resourceType: 'Bundle', meta: { profile: [PROFILE_TXBNDL] }, type: 'transaction',
+    entry: [
+      { fullUrl: listUrl,      resource: list,      request: { method: 'POST', url: 'List' } },
+      { fullUrl: docRefUrl,    resource: docRef,    request: { method: 'POST', url: 'DocumentReference' } },
+      { fullUrl: docBundleUrl, resource: docBundle, request: { method: 'POST', url: 'Bundle' } }
+    ]
+  }
+}
+
+async function submitMhd(txBundle) {
+  const url = MHD_ENDPOINT
+  logStep('POST (MHD)', url)
+  const r = await axios.post(url, txBundle, {
+    headers: { 'Content-Type': 'application/fhir+json' },
+    auth: { username: process.env.OPENHIM_USER, password: process.env.OPENHIM_PASS },
+    validateStatus: false, httpsAgent: axios.defaults.httpsAgent || devAgent
+  })
+  if (r.status >= 400) { logStep('❌ MHD POST falló:', r.status, JSON.stringify(r.data).slice(0, 800)); throw new Error(`MHD POST ${r.status}`) }
+  logStep('✅ MHD OK', r.status)
+  return r.status
+}
+
+// ============================================================================
 // Endpoints
 // ============================================================================
 app.get(['/forwarderservicerequest/_health', '/forwarderServiceRequest/_health'], (_req, res) => res.send('OK'))
@@ -331,8 +431,17 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     const sr = buildServiceRequest({ encId: uuid, patientRef, authoredOn, byConcept, ipsRef, originOrgName })
     await putToNode(sr); sent++
 
-    logStep('🎉 Done ServiceRequest', uuid, '| IPS:', ipsRef?.reference || '—')
-    res.json({ status: 'ok', uuid, sent, serviceRequest: sr.id, ips: ipsRef?.reference || null })
+    // 8) Documento MHD "Interconsulta Transfronteriza" (Fase 2) — Composition + Document Bundle + DocumentReference
+    let mhd = false
+    if (MHD_ENABLED) {
+      try {
+        const tx = buildMhdTransaction({ patient, serviceRequest: sr, date: authoredOn || new Date().toISOString() })
+        await submitMhd(tx); mhd = true
+      } catch (e) { logStep('⚠️ No se pudo enviar el documento MHD:', e.message) }
+    }
+
+    logStep('🎉 Done ServiceRequest', uuid, '| IPS:', ipsRef?.reference || '—', '| MHD:', mhd)
+    res.json({ status: 'ok', uuid, sent, serviceRequest: sr.id, ips: ipsRef?.reference || null, mhd })
   } catch (e) {
     logStep('❌ ERROR:', e.message)
     res.status(500).json({ error: e.message })

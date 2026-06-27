@@ -1,0 +1,48 @@
+{
+  "urn": "urn:mediator:fhir-forwarder-medicationstatement",
+  "version": "1.0.0",
+  "name": "FHIR Event Forwarder MedicationStatement Mediator",
+  "description": "Toma el formulario Reporte Medicamentos (OpenMRS obs) y construye un MedicationStatement FHIR (perfil LACMedicationStatementMeOw, IG RACSEL). Lo reenvía al nodo nacional vía OpenHIM.",
+  "defaultChannelConfig": [
+    {
+      "name": "FHIR Event Forwarder MedicationStatement Mediator",
+      "urlPattern": "^/forwardermedicationstatement/_event$",
+      "routes": [
+        {
+          "name": "FHIR Event Forwarder MedicationStatement Mediator Route",
+          "host": "10.68.174.209",
+          "path": "/forwardermedicationstatement/_event",
+          "port": "8017",
+          "primary": true,
+          "type": "http"
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["POST"],
+      "type": "http"
+    },
+    {
+      "name": "FHIR Event Forwarder MedicationStatement Mediator Health Channel",
+      "urlPattern": "^/forwardermedicationstatement/_health$",
+      "routes": [
+        {
+          "name": "FHIR Event Forwarder MedicationStatement Mediator Health Route",
+          "host": "10.68.174.209",
+          "path": "/forwardermedicationstatement/_health",
+          "port": "8017",
+          "primary": true,
+          "type": "http"
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["GET"],
+      "type": "http"
+    }
+  ],
+  "endpoints": [
+    { "name": "event-endpoint",  "path": "/forwardermedicationstatement/_event",  "method": "post" },
+    { "name": "health-endpoint", "path": "/forwardermedicationstatement/_health", "method": "get" }
+  ],
+  "heartbeatPath": "/forwardermedicationstatement/_health",
+  "heartbeatInterval": 30000
+}
