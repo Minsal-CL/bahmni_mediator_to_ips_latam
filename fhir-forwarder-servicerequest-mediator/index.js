@@ -79,6 +79,15 @@ const SR_STATUS        = process.env.SR_STATUS        || 'active'        // draf
 const SR_INTENT        = process.env.SR_INTENT        || 'order'         // proposal|plan|order|...
 const SR_CATEGORY_TEXT = process.env.SR_CATEGORY_TEXT || 'Interconsulta' // Tipo de derivación (respuesta única)
 
+// Perfiles IG RACSEL "Interconsulta Transfronteriza" (https://ig.racsel.org)
+const PROFILE_SR  = process.env.SR_PROFILE_URL  || 'http://racsel.org/StructureDefinition/LACServiceRequestIT'
+const PROFILE_ORG = process.env.SR_ORG_PROFILE_URL || 'http://racsel.org/StructureDefinition/LACOrganization'
+// identifier (1..*) de la solicitud
+const SR_ID_SYSTEM = process.env.SR_IDENTIFIER_SYSTEM || 'http://minsal.cl/sid/servicerequest-it'
+// Organización de ORIGEN (requester) — el establecimiento solicitante chileno
+const ORIGIN_ORG_NAME    = process.env.SR_ORIGIN_ORG_NAME    || 'Hospital Clínico San Borja Arriarán'
+const ORIGIN_ORG_COUNTRY = process.env.SR_ORIGIN_ORG_COUNTRY || 'CL' // ISO 3166-1 alpha-2
+
 // IPS (ITI-67) — mismo origen que el dashboard "IPS LAC" (ipsConfig.js)
 const IPS_TYPE_LOINC = process.env.IPS_TYPE_LOINC || '60591-5' // LOINC "Patient summary document"
 const REGIONAL_BASE  = (process.env.IPS_REGIONAL_BASE || 'https://apiopenhim.nodonacionalph4h-dev.minsal.cl/regional').replace(/\/$/, '')
@@ -198,7 +207,10 @@ async function queryIpsByIdentifier(identifier) {
   const entry = (res.data?.entry || [])[0]
   const dr = entry?.resource
   if (!dr || dr.resourceType !== 'DocumentReference') return undefined
-  const ref = entry.fullUrl || `${REGIONAL_BASE}/DocumentReference/${dr.id}`
+  // supportingInfo del IG (LACServiceRequestIT) referencia el Bundle IPS (LACBundleIPS):
+  // tomamos la URL del attachment del DocumentReference; si no hay, caemos al propio DocumentReference.
+  const bundleUrl = (dr.content || []).map(c => c?.attachment?.url).find(Boolean)
+  const ref = bundleUrl || entry.fullUrl || `${REGIONAL_BASE}/DocumentReference/${dr.id}`
   return { reference: ref, display: `IPS (${dr.date || dr.meta?.lastUpdated || ''})`.trim() }
 }
 
@@ -221,44 +233,48 @@ async function fetchLatestIps(patient) {
 // ============================================================================
 // Construcción del ServiceRequest
 // ============================================================================
-function buildServiceRequest({ encId, patientRef, requesterRef, authoredOn, byConcept, ipsRef }) {
-  const referredTo = obsValueString(byConcept[CONCEPT.REFERRED_TO])
-  const reason     = obsValueString(byConcept[CONCEPT.REASON_TEXT])
-  const note       = obsValueString(byConcept[CONCEPT.CLINICAL_HISTORY])
-  const orgName    = obsValueString(byConcept[CONCEPT.ORG_DEST])
-  const country    = obsCountry(byConcept[CONCEPT.COUNTRY_DEST])
+// Construye el ServiceRequest conforme al perfil LACServiceRequestIT (IG RACSEL Interconsulta Transfronteriza).
+// requester = Organización de ORIGEN; performer = Organización de DESTINO; ambas LACOrganization contenidas.
+function buildServiceRequest({ encId, patientRef, authoredOn, byConcept, ipsRef, originOrgName }) {
+  const referredTo  = obsValueString(byConcept[CONCEPT.REFERRED_TO])
+  const reason      = obsValueString(byConcept[CONCEPT.REASON_TEXT])
+  const note        = obsValueString(byConcept[CONCEPT.CLINICAL_HISTORY])
+  const destName    = obsValueString(byConcept[CONCEPT.ORG_DEST])
+  const country     = obsCountry(byConcept[CONCEPT.COUNTRY_DEST])
+  const destCountry = country?.iso2 || country?.display // address.country debe ser ISO 3166-1 alpha-2
 
-  // Organización destino (contenida): nombre libre + país (address.country)
-  let contained, performer
-  if (orgName || country) {
-    // address.country (FHIR string) = ISO 3166-1 alpha-2 si lo resolvimos; si no, el display como fallback
-    const countryStr = country?.iso2 || country?.display
-    const org = {
-      resourceType: 'Organization',
-      id: 'dest-org',
-      ...(orgName ? { name: orgName } : {}),
-      ...(countryStr ? { address: [{ country: countryStr }] } : {})
-    }
-    contained = [org]
-    performer = [{ reference: '#dest-org', ...(orgName ? { display: orgName } : {}) }]
+  // LACOrganization contenidas (address.country obligatorio en el perfil)
+  const originOrg = {
+    resourceType: 'Organization', id: 'org-origin', meta: { profile: [PROFILE_ORG] },
+    name: originOrgName || ORIGIN_ORG_NAME,
+    address: [{ country: ORIGIN_ORG_COUNTRY }]
   }
+  const destOrg = {
+    resourceType: 'Organization', id: 'org-dest', meta: { profile: [PROFILE_ORG] },
+    name: destName || 'Organización de destino',
+    ...(destCountry ? { address: [{ country: destCountry }] } : {})
+  }
+
+  if (!ipsRef) logStep('⚠️ Sin IPS: el perfil LACServiceRequestIT exige supportingInfo (1..1)')
 
   const sr = {
     resourceType: 'ServiceRequest',
     id: encId, // un ServiceRequest por Encounter (upsert por re-envío)
+    meta: { profile: [PROFILE_SR] },
+    identifier: [{ system: SR_ID_SYSTEM, value: encId }],
     status: SR_STATUS,
     intent: SR_INTENT,
     category: [{ text: SR_CATEGORY_TEXT }],
-    ...(referredTo ? { code: { text: referredTo } } : {}),
+    code: { text: referredTo || SR_CATEGORY_TEXT },
     subject: { reference: patientRef },
     encounter: { reference: `Encounter/${encId}` },
     ...(authoredOn ? { authoredOn } : {}),
-    ...(requesterRef ? { requester: { reference: requesterRef } } : {}),
+    requester: { reference: '#org-origin', display: originOrg.name },
+    performer: [{ reference: '#org-dest', display: destOrg.name }],
     ...(reason ? { reasonCode: [{ text: reason }] } : {}),
     ...(note ? { note: [{ text: note }] } : {}),
-    ...(contained ? { contained } : {}),
-    ...(performer ? { performer } : {}),
-    ...(ipsRef ? { supportingInfo: [ipsRef] } : {})
+    ...(ipsRef ? { supportingInfo: [ipsRef] } : {}),
+    contained: [originOrg, destOrg]
   }
   return sr
 }
@@ -296,11 +312,11 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     const patient = await getFromProxy(`/Patient/${pid}`)
     await putToNode(patient); sent++
 
-    // 4) Practitioner solicitante (best-effort)
-    const requesterRef = pickPractitionerRef(observations, enc)
-    if (requesterRef?.startsWith('Practitioner/')) {
-      try { const prac = await getFromProxy(`/${requesterRef}`); await putToNode(prac); sent++ }
-      catch (e) { logStep('⚠️ No se pudo subir Practitioner solicitante:', e.message) }
+    // 4) Practitioner del Encounter (best-effort; queda en el Encounter, el requester del SR es la org de origen)
+    const practitionerRef = pickPractitionerRef(observations, enc)
+    if (practitionerRef?.startsWith('Practitioner/')) {
+      try { const prac = await getFromProxy(`/${practitionerRef}`); await putToNode(prac); sent++ }
+      catch (e) { logStep('⚠️ No se pudo subir Practitioner:', e.message) }
     }
 
     // 5) Encounter (best-effort, para la referencia)
@@ -309,9 +325,10 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     // 6) Último IPS del paciente (ITI-67, probando RUN y Pasaporte) -> supportingInfo
     const ipsRef = await fetchLatestIps(patient)
 
-    // 7) Construir y subir el ServiceRequest
+    // 7) Construir y subir el ServiceRequest (perfil LACServiceRequestIT)
     const authoredOn = pickAuthoredOn(observations, enc)
-    const sr = buildServiceRequest({ encId: uuid, patientRef, requesterRef, authoredOn, byConcept, ipsRef })
+    const originOrgName = enc.serviceProvider?.display // org de origen = serviceProvider del Encounter
+    const sr = buildServiceRequest({ encId: uuid, patientRef, authoredOn, byConcept, ipsRef, originOrgName })
     await putToNode(sr); sent++
 
     logStep('🎉 Done ServiceRequest', uuid, '| IPS:', ipsRef?.reference || '—')
