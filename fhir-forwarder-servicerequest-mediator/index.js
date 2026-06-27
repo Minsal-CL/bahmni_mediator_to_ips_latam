@@ -94,7 +94,11 @@ const ORIGIN_ORG_COUNTRY = process.env.SR_ORIGIN_ORG_COUNTRY || 'CL' // ISO 3166
 // Si SR_MHD_ENABLED=true, además de subir el ServiceRequest, ensambla el documento
 // (Composition + Document Bundle + DocumentReference + List) y lo POSTea como transacción MHD (ITI-65).
 const MHD_ENABLED  = (process.env.SR_MHD_ENABLED || 'true').toLowerCase() === 'true'
-const MHD_ENDPOINT = (process.env.SR_MHD_ENDPOINT || `${(process.env.FHIR_NODE_URL || '').replace(/\/$/, '')}/fhir`).replace(/\/$/, '')
+// Dos servidores FHIR DISTINTOS:
+//   - Recurso clínico (Paso 1) -> SR_FHIR_RESOURCE_URL (default FHIR_NODE_URL) = hapilocal
+//   - Documento MHD  (Paso 2)  -> SR_MHD_ENDPOINT                              = hapinacional
+// Sin fallback cruzado: si SR_MHD_ENDPOINT no está, se omite el documento.
+const MHD_ENDPOINT = (process.env.SR_MHD_ENDPOINT || '').replace(/\/$/, '')
 const PROFILE_COMP    = process.env.SR_COMPOSITION_PROFILE || 'http://racsel.org/StructureDefinition/LACCompositionIT'
 const PROFILE_DOCBNDL = process.env.SR_DOCBUNDLE_PROFILE   || 'http://racsel.org/StructureDefinition/LACBundleDocIT'
 const PROFILE_DOCREF  = process.env.SR_DOCREF_PROFILE      || 'http://racsel.org/StructureDefinition/LACDocReferenceIT'
@@ -118,6 +122,8 @@ const PASSPORT_ID_TYPE_TEXT = process.env.SR_PASSPORT_ID_TYPE_TEXT || 'Pasaporte
 // Fuentes (proxy FHIR de OpenMRS) y destino (nodo nacional)
 // ============================================================================
 const baseProxy = (process.env.FHIR_PROXY_URL || '').replace(/\/$/, '')
+// Nodo de recursos clínicos (Paso 1) — distinto del MHD (Paso 2)
+const RESOURCE_BASE = (process.env.SR_FHIR_RESOURCE_URL || process.env.FHIR_NODE_URL || '').replace(/\/$/, '')
 async function getFromProxy(path) {
   const url = `${baseProxy}${path}`
   logStep('GET (proxy)', url)
@@ -132,7 +138,7 @@ async function getFromProxy(path) {
 }
 
 async function putToNode(resource) {
-  const url = `${process.env.FHIR_NODE_URL}/fhir/${resource.resourceType}/${resource.id}`
+  const url = `${RESOURCE_BASE}/fhir/${resource.resourceType}/${resource.id}`
   logStep('PUT (node)', url)
   const r = await axios.put(url, resource, {
     headers: { 'Content-Type': 'application/fhir+json' },
@@ -449,10 +455,14 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     // 8) Documento MHD "Interconsulta Transfronteriza" (Fase 2) con todos los ServiceRequest
     let mhd = false
     if (MHD_ENABLED && srResources.length) {
-      try {
-        const tx = buildMhdTransaction({ patient, serviceRequests: srResources, date: authoredOn || new Date().toISOString() })
-        await submitMhd(tx); mhd = true
-      } catch (e) { logStep('⚠️ No se pudo enviar el documento MHD:', e.message) }
+      if (!MHD_ENDPOINT) {
+        logStep('⚠️ MHD habilitado pero sin endpoint (SR_MHD_ENDPOINT) — se omite el documento')
+      } else {
+        try {
+          const tx = buildMhdTransaction({ patient, serviceRequests: srResources, date: authoredOn || new Date().toISOString() })
+          await submitMhd(tx); mhd = true
+        } catch (e) { logStep('⚠️ No se pudo enviar el documento MHD:', e.message) }
+      }
     }
 
     logStep('🎉 Done ServiceRequest', uuid, '| SR:', srResources.length, '| IPS:', ipsRef?.reference || '—', '| MHD:', mhd)
