@@ -56,6 +56,7 @@ app.use(express.json({ limit: '20mb' }))
 // Configuración de mapeo (UUIDs del formulario "Reporte Medicamentos")
 // ============================================================================
 const CONCEPT = {
+  GROUP:      process.env.MS_CONCEPT_GROUP      || 'ed736658-0ae5-4a0b-9da3-a5eeadf6dca6',   // obsGroup Set "reporte medicamento" (hasMember)
   MEDICATION: process.env.MS_CONCEPT_MEDICATION || '1282AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', // Coded -> medicationCodeableConcept
   DOSE_TEXT:  process.env.MS_CONCEPT_DOSE_TEXT  || '165503AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', // Text  -> dosage.text
   ROUTE_TEXT: process.env.MS_CONCEPT_ROUTE_TEXT || '165502AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'  // Text  -> dosage.route.text
@@ -274,11 +275,34 @@ app.post(['/forwardermedicationstatement/_event', '/forwarderMedicationStatement
     const pid = patientRef?.split('/').pop()
     if (!pid) throw new Error('Encounter.subject.reference inválido')
 
-    // 2) Observaciones del Encounter
-    const obsBundle = await getFromProxy(`/Observation?encounter=Encounter/${encodeURIComponent(uuid)}&_count=200&_format=application/fhir+json`)
+    // 2) Observaciones del Encounter (incluye miembros del obs grupo)
+    const obsBundle = await getFromProxy(`/Observation?encounter=Encounter/${encodeURIComponent(uuid)}&_include=Observation:has-member&_count=200&_format=application/fhir+json`)
     const observations = (obsBundle.entry || []).map(e => e.resource).filter(r => r?.resourceType === 'Observation')
-    const medObsList = observations.filter(o => obsHasConcept(o, CONCEPT.MEDICATION))
-    if (!medObsList.length) {
+    const byId = {}; for (const o of observations) if (o.id) byId[o.id] = o
+    const effective = pickEffective(observations, enc)
+    const membersOf = g => (g.hasMember || []).map(m => byId[m.reference?.split('/').pop()]).filter(Boolean)
+
+    // Unidades de medicamento: preferir el obs grupo "reporte medicamento" (hasMember) → pareo correcto;
+    // si no hay grupos, fallback plano (un medicamento con la primera Dosis/Vía del encuentro).
+    let units = []
+    const groups = observations.filter(o => obsHasConcept(o, CONCEPT.GROUP))
+    if (groups.length) {
+      units = groups.map(g => {
+        const m = membersOf(g)
+        return {
+          id: g.id,
+          medObs:    m.find(x => obsHasConcept(x, CONCEPT.MEDICATION)),
+          doseText:  obsValueString(m.find(x => obsHasConcept(x, CONCEPT.DOSE_TEXT))),
+          routeText: obsValueString(m.find(x => obsHasConcept(x, CONCEPT.ROUTE_TEXT)))
+        }
+      }).filter(u => u.medObs)
+    } else {
+      const doseText  = obsValueString(firstByConcept(observations, CONCEPT.DOSE_TEXT))
+      const routeText = obsValueString(firstByConcept(observations, CONCEPT.ROUTE_TEXT))
+      units = observations.filter(o => obsHasConcept(o, CONCEPT.MEDICATION))
+        .map(medObs => ({ id: medObs.id, medObs, doseText, routeText }))
+    }
+    if (!units.length) {
       logStep('ⓘ El Encounter no tiene observaciones de Reporte Medicamentos', uuid)
       return res.json({ status: 'skip', uuid, reason: 'no medication obs' })
     }
@@ -287,19 +311,14 @@ app.post(['/forwardermedicationstatement/_event', '/forwarderMedicationStatement
     const patient = await getFromProxy(`/Patient/${pid}`)
     await putToNode(patient); sent++
 
-    // 4) Dosis / Vía (form plano: una de cada una; se aplican al/los medicamento(s))
-    const doseText  = obsValueString(firstByConcept(observations, CONCEPT.DOSE_TEXT))
-    const routeText = obsValueString(firstByConcept(observations, CONCEPT.ROUTE_TEXT))
-    const effective = pickEffective(observations, enc)
-
-    // 5) Un MedicationStatement por cada obs de Medicamento (normalmente uno)
+    // 4) Un MedicationStatement por unidad/grupo (cada uno con su Dosis/Vía pareadas)
     const created = []
     const msResources = []
-    for (const medObs of medObsList) {
+    for (const u of units) {
       const ms = buildMedicationStatement({
-        id: medObs.id, patientRef, encId: uuid, effective, medObs, doseText, routeText
+        id: u.id, patientRef, encId: uuid, effective, medObs: u.medObs, doseText: u.doseText, routeText: u.routeText
       })
-      if (!ms.medicationCodeableConcept) { logStep('⚠️ Obs Medicamento sin código, se omite', medObs.id); continue }
+      if (!ms.medicationCodeableConcept) { logStep('⚠️ Medicamento sin código, se omite', u.id); continue }
       await putToNode(ms); sent++; created.push(ms.id); msResources.push(ms)
     }
 

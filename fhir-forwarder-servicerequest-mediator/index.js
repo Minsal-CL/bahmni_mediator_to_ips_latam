@@ -68,6 +68,7 @@ app.use(express.json({ limit: '20mb' }))
 // UUIDs de los conceptos del formulario "Interconsulta Transfronteriza".
 // (todos verificados en standard-config/.../bahmniforms/lac_service_request_interconsulta_sin_ips.json)
 const CONCEPT = {
+  GROUP:            process.env.SR_CONCEPT_GROUP            || '1c756067-27fd-4353-934b-5eff5384ddcd', // obsGroup Set "interconsulta transfronteriza" (hasMember) -> 1 ServiceRequest por grupo
   REFERRED_TO:      process.env.SR_CONCEPT_REFERRED_TO      || '9bb0795c-4ff0-0305-1990-000000000042', // -> code.text
   REASON_TEXT:      process.env.SR_CONCEPT_REASON_TEXT      || '164359AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', // -> reasonCode.text
   CLINICAL_HISTORY: process.env.SR_CONCEPT_CLINICAL_HISTORY || '9bb0795c-4ff0-0305-1990-000000000043', // -> note.text (Texto de carta)
@@ -250,7 +251,8 @@ async function fetchLatestIps(patient) {
 // ============================================================================
 // Construye el ServiceRequest conforme al perfil LACServiceRequestIT (IG RACSEL Interconsulta Transfronteriza).
 // requester = Organización de ORIGEN; performer = Organización de DESTINO; ambas LACOrganization contenidas.
-function buildServiceRequest({ encId, patientRef, authoredOn, byConcept, ipsRef, originOrgName }) {
+function buildServiceRequest({ id, encId, patientRef, authoredOn, byConcept, ipsRef, originOrgName }) {
+  const srId = id || encId
   const referredTo  = obsValueString(byConcept[CONCEPT.REFERRED_TO])
   const reason      = obsValueString(byConcept[CONCEPT.REASON_TEXT])
   const note        = obsValueString(byConcept[CONCEPT.CLINICAL_HISTORY])
@@ -274,9 +276,9 @@ function buildServiceRequest({ encId, patientRef, authoredOn, byConcept, ipsRef,
 
   const sr = {
     resourceType: 'ServiceRequest',
-    id: encId, // un ServiceRequest por Encounter (upsert por re-envío)
+    id: srId, // un ServiceRequest por grupo de interconsulta (o por Encounter en modo plano)
     meta: { profile: [PROFILE_SR] },
-    identifier: [{ system: SR_ID_SYSTEM, value: encId }],
+    identifier: [{ system: SR_ID_SYSTEM, value: srId }],
     status: SR_STATUS,
     intent: SR_INTENT,
     category: [{ text: SR_CATEGORY_TEXT }],
@@ -301,7 +303,7 @@ function buildAuthorOrg() {
   return { resourceType: 'Organization', meta: { profile: [PROFILE_ORG] }, name: ORIGIN_ORG_NAME, address: [{ country: ORIGIN_ORG_COUNTRY }] }
 }
 
-function buildComposition({ patientRef, authorUrl, srUrl, date, narrative }) {
+function buildComposition({ patientRef, authorUrl, srUrls, date, narrative }) {
   return {
     resourceType: 'Composition',
     meta: { profile: [PROFILE_COMP] },
@@ -315,20 +317,21 @@ function buildComposition({ patientRef, authorUrl, srUrl, date, narrative }) {
       title: SECTION_TITLE,
       code: { coding: [SECTION_CODE] },
       text: { status: 'generated', div: `<div xmlns="http://www.w3.org/1999/xhtml">${narrative}</div>` },
-      entry: [{ reference: srUrl }]
+      entry: srUrls.map(u => ({ reference: u }))
     }]
   }
 }
 
-// Ensambla la transacción MHD (LACBundleTransactionMHDIT) con el documento embebido.
-function buildMhdTransaction({ patient, serviceRequest, date }) {
+// Ensambla la transacción MHD (LACBundleTransactionMHDIT) con el documento embebido (1+ ServiceRequest).
+function buildMhdTransaction({ patient, serviceRequests, date }) {
   const u = () => `urn:uuid:${randomUUID()}`
   const patientRef = `Patient/${patient.id}`
-  const authorUrl = u(), compUrl = u(), srUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
+  const authorUrl = u(), compUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
+  const srEntries = serviceRequests.map(sr => ({ url: u(), res: sr }))
 
   const authorOrg   = buildAuthorOrg()
-  const narrative   = `Interconsulta a ${serviceRequest.code?.text || 'especialidad'} — destino: ${serviceRequest.performer?.[0]?.display || 's/d'}`
-  const composition = buildComposition({ patientRef, authorUrl, srUrl, date, narrative })
+  const narrative   = 'Interconsulta transfronteriza: ' + (serviceRequests.map(sr => `${sr.code?.text || 'especialidad'} → ${sr.performer?.[0]?.display || 's/d'}`).join('; ') || 's/d')
+  const composition = buildComposition({ patientRef, authorUrl, srUrls: srEntries.map(e => e.url), date, narrative })
 
   // Document Bundle (LACBundleDocIT, type document)
   const docBundle = {
@@ -338,7 +341,7 @@ function buildMhdTransaction({ patient, serviceRequest, date }) {
       { fullUrl: compUrl,    resource: composition },
       { fullUrl: authorUrl,  resource: authorOrg },
       { fullUrl: patientRef, resource: patient },
-      { fullUrl: srUrl,      resource: serviceRequest }
+      ...srEntries.map(e => ({ fullUrl: e.url, resource: e.res }))
     ]
   }
 
@@ -398,12 +401,21 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     const pid = patientRef?.split('/').pop()
     if (!pid) throw new Error('Encounter.subject.reference inválido')
 
-    // 2) Observaciones del Encounter (form plano)
-    const obsBundle = await getFromProxy(`/Observation?encounter=Encounter/${encodeURIComponent(uuid)}&_count=200&_format=application/fhir+json`)
+    // 2) Observaciones del Encounter (incluye miembros del obs grupo)
+    const obsBundle = await getFromProxy(`/Observation?encounter=Encounter/${encodeURIComponent(uuid)}&_include=Observation:has-member&_count=200&_format=application/fhir+json`)
     const observations = (obsBundle.entry || []).map(e => e.resource).filter(r => r?.resourceType === 'Observation')
-    const byConcept = indexObsByConcept(observations)
-    const wanted = Object.values(CONCEPT)
-    if (!wanted.some(c => byConcept[c])) {
+    const byId = {}; for (const o of observations) if (o.id) byId[o.id] = o
+    const membersOf = g => (g.hasMember || []).map(m => byId[m.reference?.split('/').pop()]).filter(Boolean)
+
+    // Unidades de interconsulta: preferir el obs grupo "interconsulta transfronteriza" (hasMember) → 1 SR por grupo;
+    // si no hay grupos, fallback plano (una interconsulta con las obs del encuentro).
+    const fieldConcepts = [CONCEPT.REFERRED_TO, CONCEPT.REASON_TEXT, CONCEPT.CLINICAL_HISTORY, CONCEPT.COUNTRY_DEST, CONCEPT.ORG_DEST]
+    const groups = observations.filter(o => obsHasConcept(o, CONCEPT.GROUP))
+    let units = groups.length
+      ? groups.map(g => ({ id: g.id, byConcept: indexObsByConcept(membersOf(g)) }))
+      : [{ id: uuid, byConcept: indexObsByConcept(observations) }]
+    units = units.filter(u => fieldConcepts.some(c => u.byConcept[c]))
+    if (!units.length) {
       logStep('ⓘ El Encounter no tiene observaciones de Interconsulta Transfronteriza', uuid)
       return res.json({ status: 'skip', uuid, reason: 'no interconsulta obs' })
     }
@@ -422,26 +434,29 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     // 5) Encounter (best-effort, para la referencia)
     try { await putToNode(enc); sent++ } catch (e) { logStep('⚠️ No se pudo subir Encounter:', e.message) }
 
-    // 6) Último IPS del paciente (ITI-67, probando RUN y Pasaporte) -> supportingInfo
+    // 6) Último IPS del paciente (ITI-67, probando RUN y Pasaporte) — una vez por paciente
     const ipsRef = await fetchLatestIps(patient)
-
-    // 7) Construir y subir el ServiceRequest (perfil LACServiceRequestIT)
     const authoredOn = pickAuthoredOn(observations, enc)
     const originOrgName = enc.serviceProvider?.display // org de origen = serviceProvider del Encounter
-    const sr = buildServiceRequest({ encId: uuid, patientRef, authoredOn, byConcept, ipsRef, originOrgName })
-    await putToNode(sr); sent++
 
-    // 8) Documento MHD "Interconsulta Transfronteriza" (Fase 2) — Composition + Document Bundle + DocumentReference
+    // 7) Un ServiceRequest por unidad/grupo (perfil LACServiceRequestIT)
+    const srResources = []
+    for (const u of units) {
+      const sr = buildServiceRequest({ id: u.id, encId: uuid, patientRef, authoredOn, byConcept: u.byConcept, ipsRef, originOrgName })
+      await putToNode(sr); sent++; srResources.push(sr)
+    }
+
+    // 8) Documento MHD "Interconsulta Transfronteriza" (Fase 2) con todos los ServiceRequest
     let mhd = false
-    if (MHD_ENABLED) {
+    if (MHD_ENABLED && srResources.length) {
       try {
-        const tx = buildMhdTransaction({ patient, serviceRequest: sr, date: authoredOn || new Date().toISOString() })
+        const tx = buildMhdTransaction({ patient, serviceRequests: srResources, date: authoredOn || new Date().toISOString() })
         await submitMhd(tx); mhd = true
       } catch (e) { logStep('⚠️ No se pudo enviar el documento MHD:', e.message) }
     }
 
-    logStep('🎉 Done ServiceRequest', uuid, '| IPS:', ipsRef?.reference || '—', '| MHD:', mhd)
-    res.json({ status: 'ok', uuid, sent, serviceRequest: sr.id, ips: ipsRef?.reference || null, mhd })
+    logStep('🎉 Done ServiceRequest', uuid, '| SR:', srResources.length, '| IPS:', ipsRef?.reference || '—', '| MHD:', mhd)
+    res.json({ status: 'ok', uuid, sent, serviceRequests: srResources.map(s => s.id), ips: ipsRef?.reference || null, mhd })
   } catch (e) {
     logStep('❌ ERROR:', e.message)
     res.status(500).json({ error: e.message })
