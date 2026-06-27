@@ -5,11 +5,42 @@ import 'dotenv/config'
 import express from 'express'
 import axios from 'axios'
 import https from 'https'
+import fs from 'fs'
+import path from 'path'
 import { registerMediator, activateHeartbeat } from 'openhim-mediator-utils'
 import { createRequire } from 'module'
 import { randomUUID } from 'crypto'
 const require = createRequire(import.meta.url)
 const mediatorConfig = require('./mediatorConfig.json')
+
+// Carpeta donde se deja una copia del bundle MHD enviado (evidencia connectathon)
+const MHD_DUMP_DIR = process.env.MHD_DUMP_DIR || '/tmp'
+function dumpBundle(kind, id, data) {
+  try {
+    fs.mkdirSync(MHD_DUMP_DIR, { recursive: true })
+    const file = path.join(MHD_DUMP_DIR, `mhd_${kind}_${id}_${Date.now()}.json`)
+    fs.writeFileSync(file, JSON.stringify(data, null, 2))
+    console.log(new Date().toISOString(), '💾 Bundle MHD guardado:', file)
+  } catch (e) { console.warn('⚠️ No se pudo guardar el bundle MHD:', e.message) }
+}
+// Registro de orquestación para que OpenHIM muestre cada llamada saliente en la transacción
+function mkOrch(name, method, url, reqBody, res) {
+  const safe = v => { try { return typeof v === 'string' ? v : JSON.stringify(v) } catch { return '' } }
+  return {
+    name,
+    request:  { method, path: url, body: safe(reqBody), timestamp: new Date().toISOString() },
+    response: { status: res?.status || 0, body: safe(res?.data), timestamp: new Date().toISOString() }
+  }
+}
+function sendOpenhim(res, summary, orchestrations) {
+  res.set('Content-Type', 'application/json+openhim')
+  res.send(JSON.stringify({
+    'x-mediator-urn': mediatorConfig.urn,
+    status: 'Successful',
+    response: { status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(summary), timestamp: new Date().toISOString() },
+    orchestrations: orchestrations || []
+  }))
+}
 
 // --- OpenHIM config ---
 const openhimConfig = {
@@ -105,7 +136,7 @@ async function getFromProxy(path) {
   return resp.data
 }
 
-async function putToNode(resource) {
+async function putToNode(resource, orch) {
   const url = `${RESOURCE_BASE}/fhir/${resource.resourceType}/${resource.id}`
   logStep('PUT (node)', url)
   const r = await axios.put(url, resource, {
@@ -113,6 +144,7 @@ async function putToNode(resource) {
     validateStatus: false,
     httpsAgent: axios.defaults.httpsAgent || devAgent
   })
+  if (orch) orch.push(mkOrch(`PUT ${resource.resourceType}/${resource.id}`, 'PUT', url, resource, r))
   if (r.status >= 400) {
     logStep('❌ PUT failed payload:', JSON.stringify(r.data, null, 2))
     throw new Error(`PUT failed ${r.status}`)
@@ -203,7 +235,9 @@ function buildComposition({ patientUrl, authorUrl, msUrls, date, narrative }) {
 // Ensambla la transacción MHD (LACBundleTransactionMHDMeOw) con el documento embebido.
 function buildMhdTransaction({ patient, msResources, date }) {
   const u = () => `urn:uuid:${randomUUID()}`
-  const patientUrl = u(), authorUrl = u(), compUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
+  // Patient con fullUrl = Patient/{id} para que coincida con MedicationStatement.subject (consistencia del documento)
+  const patientUrl = `Patient/${patient.id}`
+  const authorUrl = u(), compUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
   const msEntries = msResources.map(ms => ({ url: u(), res: ms }))
 
   const authorOrg   = buildAuthorOrg()
@@ -249,7 +283,7 @@ function buildMhdTransaction({ patient, msResources, date }) {
   }
 }
 
-async function submitMhd(txBundle) {
+async function submitMhd(txBundle, orch) {
   const url = MHD_ENDPOINT // POST de la transacción
   logStep('POST (MHD)', url)
   const r = await axios.post(url, txBundle, {
@@ -257,6 +291,7 @@ async function submitMhd(txBundle) {
     auth: { username: process.env.OPENHIM_USER, password: process.env.OPENHIM_PASS },
     validateStatus: false, httpsAgent: axios.defaults.httpsAgent || devAgent
   })
+  if (orch) orch.push(mkOrch('MHD ITI-65 (POST transaction)', 'POST', url, txBundle, r))
   if (r.status >= 400) { logStep('❌ MHD POST falló:', r.status, JSON.stringify(r.data).slice(0, 800)); throw new Error(`MHD POST ${r.status}`) }
   logStep('✅ MHD OK', r.status)
   return r.status
@@ -273,6 +308,7 @@ app.post(['/forwardermedicationstatement/_event', '/forwarderMedicationStatement
   if (!uuid) return res.status(400).json({ error: 'Missing uuid' })
 
   let sent = 0
+  const orch = [] // orquestaciones para el log de OpenHIM
   try {
     // 1) Encounter
     const enc = await getFromProxy(`/Encounter/${uuid}`)
@@ -315,7 +351,7 @@ app.post(['/forwardermedicationstatement/_event', '/forwarderMedicationStatement
 
     // 3) Patient (subir referencia)
     const patient = await getFromProxy(`/Patient/${pid}`)
-    await putToNode(patient); sent++
+    await putToNode(patient, orch); sent++
 
     // 4) Un MedicationStatement por unidad/grupo (cada uno con su Dosis/Vía pareadas)
     const created = []
@@ -325,24 +361,24 @@ app.post(['/forwardermedicationstatement/_event', '/forwarderMedicationStatement
         id: u.id, patientRef, encId: uuid, effective, medObs: u.medObs, doseText: u.doseText, routeText: u.routeText
       })
       if (!ms.medicationCodeableConcept) { logStep('⚠️ Medicamento sin código, se omite', u.id); continue }
-      await putToNode(ms); sent++; created.push(ms.id); msResources.push(ms)
+      await putToNode(ms, orch); sent++; created.push(ms.id); msResources.push(ms)
     }
 
     // 6) Documento MHD "Reporte Medicamentos" (Fase 2) — va a un servidor FHIR distinto (MHD)
     let mhd = false
     if (MHD_ENABLED && msResources.length) {
       if (!MHD_ENDPOINT) {
-        logStep('⚠️ MHD habilitado pero sin endpoint (MS_MHD_ENDPOINT / FHIR_NODO_REGIONAL_SERVER) — se omite el documento')
+        logStep('⚠️ MHD habilitado pero sin endpoint (MS_MHD_ENDPOINT) — se omite el documento')
       } else {
-        try {
-          const tx = buildMhdTransaction({ patient, msResources, date: effective || new Date().toISOString() })
-          await submitMhd(tx); mhd = true
-        } catch (e) { logStep('⚠️ No se pudo enviar el documento MHD:', e.message) }
+        const tx = buildMhdTransaction({ patient, msResources, date: effective || new Date().toISOString() })
+        dumpBundle('medicationstatement', uuid, tx) // copia en carpeta (evidencia)
+        try { await submitMhd(tx, orch); mhd = true }
+        catch (e) { logStep('⚠️ No se pudo enviar el documento MHD:', e.message) }
       }
     }
 
     logStep('🎉 Done MedicationStatement', uuid, '| creados:', created.length, '| MHD:', mhd)
-    res.json({ status: 'ok', uuid, sent, medicationStatements: created, mhd })
+    sendOpenhim(res, { status: 'ok', uuid, sent, medicationStatements: created, mhd }, orch)
   } catch (e) {
     logStep('❌ ERROR:', e.message)
     res.status(500).json({ error: e.message })

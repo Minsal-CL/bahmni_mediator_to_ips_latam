@@ -113,6 +113,8 @@ services:
     env_file: ./.env
     ports:
       - "8016:8016"
+    volumes:
+      - ./tmp:/tmp
     restart: unless-stopped
 
   fhir-forwarder-medicationstatement-mediator:
@@ -120,6 +122,8 @@ services:
     env_file: ./.env
     ports:
       - "8017:8017"
+    volumes:
+      - ./tmp:/tmp
     restart: unless-stopped
 
 networks:
