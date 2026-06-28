@@ -130,6 +130,9 @@ const MHD_ENABLED  = (process.env.SR_MHD_ENABLED || 'true').toLowerCase() === 't
 //   - Documento MHD  (Paso 2)  -> SR_MHD_ENDPOINT                              = hapinacional
 // Sin fallback cruzado: si SR_MHD_ENDPOINT no está, se omite el documento.
 const MHD_ENDPOINT = (process.env.SR_MHD_ENDPOINT || '').replace(/\/$/, '')
+// El ServiceRequest SUELTO también se registra en el NN (hapinacional) para que sea consultable
+// y completable ahí (Track 1.2 T1.2-B/G). Base = hapinacional sin /fhir (putToNode agrega /fhir).
+const NATIONAL_RESOURCE_BASE = (process.env.SR_NATIONAL_RESOURCE_URL || MHD_ENDPOINT.replace(/\/fhir\/?$/, '')).replace(/\/$/, '')
 const PROFILE_COMP    = process.env.SR_COMPOSITION_PROFILE || 'http://racsel.org/StructureDefinition/LACCompositionIT'
 const PROFILE_DOCBNDL = process.env.SR_DOCBUNDLE_PROFILE   || 'http://racsel.org/StructureDefinition/LACBundleDocIT'
 const PROFILE_DOCREF  = process.env.SR_DOCREF_PROFILE      || 'http://racsel.org/StructureDefinition/LACDocReferenceIT'
@@ -168,8 +171,8 @@ async function getFromProxy(path) {
   return resp.data
 }
 
-async function putToNode(resource, orch) {
-  const url = `${RESOURCE_BASE}/fhir/${resource.resourceType}/${resource.id}`
+async function putToNode(resource, orch, base = RESOURCE_BASE) {
+  const url = `${base}/fhir/${resource.resourceType}/${resource.id}`
   logStep('PUT (node)', url)
   const r = await axios.put(url, resource, {
     headers: { 'Content-Type': 'application/fhir+json' },
@@ -183,6 +186,13 @@ async function putToNode(resource, orch) {
   }
   logStep('✅ PUT OK', resource.resourceType, resource.id, r.status)
   return r.status
+}
+
+// Registra el recurso suelto también en el Nodo Nacional (best-effort, no rompe el flujo).
+async function putToNational(resource, orch) {
+  if (!NATIONAL_RESOURCE_BASE) return
+  try { await putToNode(resource, orch, NATIONAL_RESOURCE_BASE) }
+  catch (e) { logStep('⚠️ No se pudo registrar en el NN', resource.resourceType, resource.id, ':', e.message) }
 }
 
 // ============================================================================
@@ -463,9 +473,10 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
       return res.json({ status: 'skip', uuid, reason: 'no interconsulta obs' })
     }
 
-    // 3) Patient (para identificador nacional + subir referencia)
+    // 3) Patient (para identificador nacional + subir referencia) — local y NN
     const patient = await getFromProxy(`/Patient/${pid}`)
     await putToNode(patient, orch); sent++
+    await putToNational(patient, orch) // para que el SR suelto resuelva su subject en el NN
 
     // 4) Practitioner del Encounter (best-effort; queda en el Encounter, el requester del SR es la org de origen)
     const practitionerRef = pickPractitionerRef(observations, enc)
@@ -487,6 +498,7 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     for (const u of units) {
       const sr = buildServiceRequest({ id: u.id, encId: uuid, patientRef, authoredOn, byConcept: u.byConcept, ipsRef, originOrgName })
       await putToNode(sr, orch); sent++; srResources.push(sr)
+      await putToNational(sr, orch) // SR suelto también en el NN (Track 1.2: consultable/completable ahí)
     }
 
     // 8) Documento MHD "Interconsulta Transfronteriza" (Fase 2) con todos los ServiceRequest
