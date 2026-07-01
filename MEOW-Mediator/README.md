@@ -6,10 +6,12 @@ de la operación `$meow` del firmador, y decodifica un QR MeOw contra el servici
 ## Flujo
 
 ```
-POST /meow/_generate   { Bundle FHIR con .id }
+POST /meow/_generate   { Bundle FHIR con .id, y uno o más MedicationStatement }
         │
-        └─ GET  {MEOW_BASE_URL}/Bundle/{id}/$meow      (firmador, devuelve DocumentReference con HC1)
-        └─ genera PNG del QR (paquete "qrcode") a partir del HC1
+        ├─ por cada MedicationStatement.id del Bundle:
+        │    GET {MEOW_BASE_URL}/Bundle/{id}/$meow?medicationStatementId={msId}
+        │       (firmador, devuelve DocumentReference con HC1)
+        └─ genera PNG del QR (paquete "qrcode") a partir de cada HC1
 
 POST /meow/_decode      { qrImage: "<base64>" }  o  { hc1: "HC1:..." }
         │
@@ -21,7 +23,7 @@ POST /meow/_decode      { qrImage: "<base64>" }  o  { hc1: "HC1:..." }
 
 | Método | Ruta              | Body                                             | Respuesta |
 | ------ | ----------------- | ------------------------------------------------- | --------- |
-| POST   | `/meow/_generate`  | Bundle FHIR (objeto o string), requiere `.id`      | JSON `{ bundleId, results: [{ hc1, qrCodeDataUrl }] }`. Con `?format=png` y un único resultado, responde la imagen PNG directamente. |
+| POST   | `/meow/_generate`  | Bundle FHIR (objeto o string), requiere `.id` y al menos un `MedicationStatement` | JSON `{ bundleId, medicationStatementIds, results: [{ medicationStatementId, ok, qrCodes: [{ hc1, qrCodeDataUrl }] }] }`. Con `?format=png` y un único QR generado en total, responde la imagen PNG directamente. |
 | POST   | `/meow/_decode`    | `{ qrImage }` (base64) o `{ hc1 }`                 | JSON `{ hc1, decoded }` con la respuesta del servicio de decode |
 | GET    | `/meow/health`     | —                                                  | `{ status: 'ok' }` |
 

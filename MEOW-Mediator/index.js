@@ -175,10 +175,11 @@ function extractHc1FromMeowResponse(meowBundle) {
 }
 
 /* =========================================================
- * 1) MEOW — generar QR desde $meow por Bundle
+ * 1) MEOW — generar QR por cada MedicationStatement del Bundle
  *    POST /meow/_generate
  *    Body: Bundle FHIR (objeto o string), requiere Bundle.id
- *    Query: ?format=png  -> si hay un único resultado, responde la imagen PNG directa
+ *    Llama GET /Bundle/{id}/$meow?medicationStatementId={id} por cada MedicationStatement
+ *    Query: ?format=png  -> si se generó un único QR en total, responde la imagen PNG directa
  *    Env: MEOW_BASE_URL (required, e.g. https://signer.nodonacionalph4h-dev.minsal.cl/fhir)
  *         MEOW_BASIC_USER / MEOW_BASIC_PASS (opcional)
  * =======================================================*/
@@ -204,50 +205,94 @@ app.post('/meow/_generate', async (req, res) => {
       return res.status(400).json({ error: 'Bundle.id is required (string)' });
     }
 
-    // 1.2) Invocar $meow: GET /Bundle/{bundleId}/$meow
+    // 1.2) Extraer MedicationStatement.id del Bundle
+    const entries = Array.isArray(bundle.entry) ? bundle.entry : [];
+    const medicationStatementIds = entries
+      .map((e) => e?.resource)
+      .filter((r) => r && r.resourceType === 'MedicationStatement' && typeof r.id === 'string' && r.id.length > 0)
+      .map((r) => r.id);
+
+    if (medicationStatementIds.length === 0) {
+      return res.status(200).json({
+        bundleId,
+        medicationStatementIds: [],
+        results: [],
+        message: 'No MedicationStatement resources found in the Bundle.'
+      });
+    }
+
+    // 1.3) Preparar llamadas GET /Bundle/{bundleId}/$meow?medicationStatementId={id}
     const base = MEOW_BASE_URL.replace(/\/$/, ''); // sin trailing slash
-    const url = `${base}/Bundle/${encodeURIComponent(bundleId)}/$meow`;
-    const upstream = await axios.get(url, {
-      headers: buildUpstreamJsonHeadersMeow(),
-      responseType: 'json',
-      timeout: 45000
+    const headers = buildUpstreamJsonHeadersMeow();
+
+    const calls = medicationStatementIds.map((msId) => {
+      const url = `${base}/Bundle/${encodeURIComponent(bundleId)}/$meow?medicationStatementId=${encodeURIComponent(msId)}`;
+      return axios
+        .get(url, { headers, responseType: 'json', timeout: 45000 })
+        .then((resp) => ({ medicationStatementId: msId, ok: true, status: resp?.status ?? 200, data: resp?.data }))
+        .catch((err) => ({
+          medicationStatementId: msId,
+          ok: false,
+          status: err?.response?.status || 502,
+          error: err?.response?.data || err?.message || 'Bad Gateway'
+        }));
     });
 
-    // 1.3) Extraer HC1(s) de la respuesta (Bundle batch-response con DocumentReference)
-    const hc1Entries = extractHc1FromMeowResponse(upstream?.data);
-    if (hc1Entries.length === 0) {
-      return res.status(502).json({ error: 'No MeOw QR (HC1) found in $meow response', detail: upstream?.data });
-    }
+    // 1.4) Ejecutar en paralelo (sin romper por una que falle)
+    const settled = await Promise.allSettled(calls);
+    const called = settled.map((s) => (s.status === 'fulfilled' ? s.value : s.reason));
 
-    // 1.4) Generar imagen QR (PNG) por cada HC1
+    // 1.5) Extraer HC1(s) y generar QR (PNG) por cada MedicationStatement
     const results = [];
-    for (const item of hc1Entries) {
-      const pngBuffer = await QRCode.toBuffer(item.hc1, {
-        type: 'png',
-        errorCorrectionLevel: MEOW_QR_ERROR_CORRECTION,
-        margin: 2
-      });
-      results.push({
-        hc1: item.hc1,
-        contentType: item.contentType,
-        format: item.format,
-        qrCodeDataUrl: `data:image/png;base64,${pngBuffer.toString('base64')}`,
-        _pngBuffer: pngBuffer
-      });
+    for (const item of called) {
+      if (!item.ok) {
+        results.push({ medicationStatementId: item.medicationStatementId, ok: false, status: item.status, error: item.error });
+        continue;
+      }
+
+      const hc1Entries = extractHc1FromMeowResponse(item.data);
+      if (hc1Entries.length === 0) {
+        results.push({
+          medicationStatementId: item.medicationStatementId,
+          ok: false,
+          status: 502,
+          error: 'No MeOw QR (HC1) found in $meow response'
+        });
+        continue;
+      }
+
+      const qrCodes = [];
+      for (const hc1Entry of hc1Entries) {
+        const pngBuffer = await QRCode.toBuffer(hc1Entry.hc1, {
+          type: 'png',
+          errorCorrectionLevel: MEOW_QR_ERROR_CORRECTION,
+          margin: 2
+        });
+        qrCodes.push({
+          hc1: hc1Entry.hc1,
+          contentType: hc1Entry.contentType,
+          format: hc1Entry.format,
+          qrCodeDataUrl: `data:image/png;base64,${pngBuffer.toString('base64')}`,
+          _pngBuffer: pngBuffer
+        });
+      }
+
+      results.push({ medicationStatementId: item.medicationStatementId, ok: true, status: item.status, qrCodes });
     }
 
-    // 1.5) Si piden PNG y hay un único resultado, devolver la imagen directamente
-    if (req.query.format === 'png' && results.length === 1) {
+    // 1.6) Si piden PNG y hay un único QR generado en total, devolver la imagen directamente
+    const allQrCodes = results.filter((r) => r.ok).flatMap((r) => r.qrCodes);
+    if (req.query.format === 'png' && allQrCodes.length === 1) {
       res.type('image/png');
-      return res.send(results[0]._pngBuffer);
+      return res.send(allQrCodes[0]._pngBuffer);
     }
 
-    // 1.6) Respuesta JSON por defecto
+    // 1.7) Respuesta JSON por defecto
     return res.status(200).json({
       bundleId,
       meowOperation: '$meow',
-      count: results.length,
-      results: results.map(({ _pngBuffer, ...rest }) => rest)
+      medicationStatementIds,
+      results: results.map((r) => (r.ok ? { ...r, qrCodes: r.qrCodes.map(({ _pngBuffer, ...rest }) => rest) } : r))
     });
   } catch (e) {
     console.error('❌ ERROR /meow/_generate:', e?.message || e);
