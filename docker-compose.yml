@@ -126,6 +126,15 @@ services:
       - ./tmp:/tmp
     restart: unless-stopped
 
+  meow-mediator:
+    build: ./MEOW-Mediator
+    env_file: ./.env
+    ports:
+      - "8018:8018"
+    volumes:
+      - ./tmp:/tmp
+    restart: unless-stopped
+
 networks:
   default:
     name: lacpass-himnet

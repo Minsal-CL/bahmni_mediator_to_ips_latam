@@ -1,0 +1,77 @@
+{
+  "urn": "urn:mediator:meow-qr",
+  "version": "1.0.0",
+  "name": "MEOW QR Mediator",
+  "description": "Genera el QR (HC1) del perfil MeOw desde Bundle/{id}/$meow y decodifica un QR MeOw contra el servicio de decode de lacpass.",
+  "defaultChannelConfig": [
+    {
+      "name": "MEOW Generate Channel",
+      "urlPattern": "^/meow/_generate$",
+      "routes": [
+        {
+          "name": "MEOW Generate Route",
+          "host": "10.68.174.209",
+          "port": "8018",
+          "path": "/meow/_generate",
+          "primary": true,
+          "type": "http",
+          "passThroughHeaders": [
+            "Accept",
+            "Content-Type",
+            "Authorization"
+          ]
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["POST"],
+      "type": "http"
+    },
+    {
+      "name": "MEOW Decode Channel",
+      "urlPattern": "^/meow/_decode$",
+      "routes": [
+        {
+          "name": "MEOW Decode Route",
+          "host": "10.68.174.209",
+          "port": "8018",
+          "path": "/meow/_decode",
+          "primary": true,
+          "type": "http",
+          "passThroughHeaders": [
+            "Accept",
+            "Content-Type",
+            "Authorization"
+          ]
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["POST"],
+      "type": "http"
+    },
+    {
+      "name": "MEOW Health Channel",
+      "urlPattern": "^/meow/(_)?health$",
+      "routes": [
+        {
+          "name": "MEOW Health Route",
+          "host": "10.68.174.209",
+          "port": "8018",
+          "path": "/meow/health",
+          "primary": true,
+          "type": "http",
+          "passThroughHeaders": []
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["GET"],
+      "type": "http"
+    }
+  ],
+  "endpoints": [
+    { "name": "meow-generate-endpoint", "path": "/meow/_generate", "method": "post" },
+    { "name": "meow-decode-endpoint", "path": "/meow/_decode", "method": "post" },
+    { "name": "meow-health-endpoint", "path": "/meow/_health", "method": "get" }
+  ],
+  "heartbeatPath": "/meow/_health",
+  "heartbeatInterval": 30000
+}
