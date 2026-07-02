@@ -84,11 +84,18 @@ registerMediator(openhimConfig, mediatorConfig, err => {
 
 const app = express()
 app.use(express.json({ limit: '20mb' }))
-// CORS: el dashboard (browser) llama /_answer directo. Permite el origin de Bahmni (o '*').
+// CORS: el dashboard (browser) llama /_answer directo. Mismo patrón que los mediadores que ya
+// funcionan (DCV-ICVP, lacpass): reflejar el origin del allowlist CORS_ORIGIN + Allow-Credentials.
+// (Con credenciales/Authorization NO se puede usar '*': hay que devolver el origin exacto.)
+const CORS_ALLOW = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean)
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.CR_CORS_ORIGIN || '*')
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+  const origin = req.headers.origin
+  if (origin && (CORS_ALLOW.length === 0 || CORS_ALLOW.includes(origin))) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With')
   if (req.method === 'OPTIONS') return res.sendStatus(204)
   next()
 })
