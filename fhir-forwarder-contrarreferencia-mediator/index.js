@@ -61,25 +61,40 @@ if (process.env.NODE_ENV === 'development') {
 
 function logStep(msg, ...d) { console.log(new Date().toISOString(), msg, ...d) }
 
+// Crea o ACTUALIZA el canal en OpenHIM. Si ya existe, hace PUT para que cambios de config
+// (ej. passThroughHeaders para CORS) tomen efecto al redeploy — antes se saltaba y no se aplicaban.
+async function upsertChannel(ch) {
+  const auth = { username: openhimConfig.username, password: openhimConfig.password }
+  const body = { ...ch, mediator_urn: mediatorConfig.urn }
+  try {
+    await axios.post(`${openhimConfig.apiURL}/channels`, body, { auth })
+    console.log(`✅ Channel created: ${ch.name}`)
+  } catch (e) {
+    const msg = String(e?.response?.data || e?.message || e)
+    const isDup = msg.toLowerCase().includes('duplicate') || e?.response?.status === 409
+    if (!isDup) { console.error(`❌ Channel ${ch.name} error:`, msg); return }
+    try {
+      const list = await axios.get(`${openhimConfig.apiURL}/channels`, { auth })
+      const existing = (list.data || []).find(c => c.name === ch.name)
+      const id = existing && (existing._id || existing.id || existing.channelId || existing._uid)
+      if (id) {
+        await axios.put(`${openhimConfig.apiURL}/channels/${id}`, body, { auth })
+        console.log(`♻️ Channel updated: ${ch.name}`)
+      } else {
+        console.log(`ℹ️ Channel already exists but could not determine id: ${ch.name}`)
+      }
+    } catch (e2) {
+      console.error(`❌ Channel ${ch.name} update error:`, String(e2?.response?.data || e2?.message || e2))
+    }
+  }
+}
+
 // 1) Register mediator & channels, then start heartbeat
 registerMediator(openhimConfig, mediatorConfig, err => {
   if (err) { console.error('❌ Registration error:', err); process.exit(1) }
   console.log('✅ Forwarder Contrarreferencia registered')
-  Promise.all(
-    (mediatorConfig.defaultChannelConfig || []).map(ch =>
-      axios.post(
-        `${openhimConfig.apiURL}/channels`,
-        { ...ch, mediator_urn: mediatorConfig.urn },
-        { auth: { username: openhimConfig.username, password: openhimConfig.password } }
-      )
-      .then(() => console.log(`✅ Channel created: ${ch.name}`))
-      .catch(e => {
-        const msg = e?.response?.data || e?.message || e.toString()
-        if (String(msg).includes('duplicate key error')) console.log(`ℹ️ Channel already exists: ${ch.name}`)
-        else console.error(`❌ Channel ${ch.name} error:`, msg)
-      })
-    )
-  ).then(() => { console.log('✅ All channels processed'); activateHeartbeat(openhimConfig) })
+  Promise.all((mediatorConfig.defaultChannelConfig || []).map(upsertChannel))
+    .then(() => { console.log('✅ All channels processed'); activateHeartbeat(openhimConfig) })
 })
 
 const app = express()
