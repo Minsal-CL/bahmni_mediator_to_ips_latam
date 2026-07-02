@@ -105,12 +105,15 @@ app.use(express.json({ limit: '20mb' }))
 const CORS_ALLOW = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean)
 app.use((req, res, next) => {
   const origin = req.headers.origin
+  if (req.method === 'OPTIONS') logStep('🔎 OPTIONS preflight | origin:', origin || '(sin origin)', '| path:', req.originalUrl)
   if (origin && (CORS_ALLOW.length === 0 || CORS_ALLOW.includes(origin))) {
     res.setHeader('Access-Control-Allow-Origin', origin)
   }
+  res.setHeader('Vary', 'Origin')
   res.setHeader('Access-Control-Allow-Credentials', 'true')
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-OpenHIM-ClientID')
+  res.setHeader('Access-Control-Expose-Headers', 'X-OpenHIM-TransactionID')
   if (req.method === 'OPTIONS') return res.sendStatus(204)
   next()
 })
