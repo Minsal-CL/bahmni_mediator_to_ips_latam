@@ -107,6 +107,7 @@ const PROFILE_DOCREF  = process.env.CR_DOCREF_PROFILE      || 'http://racsel.org
 const PROFILE_TXBNDL  = process.env.CR_TXBUNDLE_PROFILE    || 'http://racsel.org/StructureDefinition/LACBundleTransactionMHDIT'
 const PROFILE_ORG_LAC = process.env.CR_ORG_PROFILE_URL     || 'http://racsel.org/StructureDefinition/LACOrganization'
 // Composition: nota de interconsulta (Consultation note) con la única sección obligatoria del perfil.
+const DOCREF_TYPE   = { system: 'http://loinc.org', code: '57133-1', display: 'Referral note' }
 const COMP_TYPE     = { system: 'http://loinc.org', code: '11488-4', display: 'Consultation note' }
 const SECTION_CODE  = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
 const SECTION_TITLE = 'Resultado de la Evaluación'
@@ -264,7 +265,7 @@ function buildMhdTransaction({ patient, narrative, date, srRef }) {
     resourceType: 'DocumentReference', meta: { profile: [PROFILE_DOCREF] },
     masterIdentifier: { system: MASTER_ID_SYSTEM, value: docBundleUrl },
     status: 'current',
-    type: { coding: [COMP_TYPE] },
+    type: { coding: [DOCREF_TYPE] },
     subject: { reference: `Patient/${patient.id}` },
     date,
     ...(srRef ? { context: { related: [{ reference: srRef }] } } : {}),
