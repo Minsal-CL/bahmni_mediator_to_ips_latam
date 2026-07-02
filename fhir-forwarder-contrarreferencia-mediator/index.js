@@ -34,12 +34,22 @@ function mkOrch(name, method, url, reqBody, res) {
     response: { status: res?.status || 0, body: safe(res?.data), timestamp: new Date().toISOString() }
   }
 }
-function sendOpenhim(res, summary, orchestrations) {
+// Headers CORS para el origin dado (allowlist CORS_ORIGIN). OpenHIM reconstruye la respuesta al
+// browser desde response.headers, así que hay que inyectarlos aquí (no basta el middleware).
+function corsHeadersFor(origin) {
+  if (!origin) return {}
+  const allow = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean)
+  if (allow.length === 0 || allow.includes(origin)) {
+    return { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true', 'Vary': 'Origin' }
+  }
+  return {}
+}
+function sendOpenhim(res, summary, orchestrations, origin) {
   res.set('Content-Type', 'application/json+openhim')
   res.send(JSON.stringify({
     'x-mediator-urn': mediatorConfig.urn,
     status: 'Successful',
-    response: { status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(summary), timestamp: new Date().toISOString() },
+    response: { status: 200, headers: { 'content-type': 'application/json', ...corsHeadersFor(origin) }, body: JSON.stringify(summary), timestamp: new Date().toISOString() },
     orchestrations: orchestrations || []
   }))
 }
@@ -426,7 +436,7 @@ app.post(['/forwardercontrarreferencia/_event', '/forwarderContrarreferencia/_ev
     await submitMhd(tx, orch)
 
     logStep('🎉 Done Contrarreferencia', uuid, '| SR:', srRef || '—')
-    sendOpenhim(res, { status: 'ok', uuid, mhd: true, serviceRequest: srRef || null }, orch)
+    sendOpenhim(res, { status: 'ok', uuid, mhd: true, serviceRequest: srRef || null }, orch, req.headers.origin)
   } catch (e) {
     logStep('❌ ERROR:', e.message)
     res.status(500).json({ error: e.message })
@@ -464,7 +474,7 @@ app.post(['/forwardercontrarreferencia/_answer', '/forwarderContrarreferencia/_a
     await submitMhd(tx, orch)
 
     logStep('🎉 Done Contrarreferencia (_answer) | SR:', resolvedSrRef || '—')
-    sendOpenhim(res, { status: 'ok', patient: patient.id, serviceRequest: resolvedSrRef || null, mhd: true }, orch)
+    sendOpenhim(res, { status: 'ok', patient: patient.id, serviceRequest: resolvedSrRef || null, mhd: true }, orch, req.headers.origin)
   } catch (e) {
     logStep('❌ ERROR (_answer):', e.message)
     res.status(500).json({ error: e.message })
