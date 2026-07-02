@@ -337,7 +337,9 @@ function buildServiceRequest({ id, encId, patientRef, authoredOn, byConcept, ips
     category: [{ text: SR_CATEGORY_TEXT }],
     code: { text: referredTo || SR_CATEGORY_TEXT },
     subject: { reference: patientRef },
-    encounter: { reference: `Encounter/${encId}` },
+    // Nota: NO se referencia el Encounter. Es una referencia interna de OpenMRS (solo existe en
+    // hapilocal) y el nodo nacional, con integridad referencial, rechazaba el SR (HAPI-1094).
+    // Además LACServiceRequestIT no requiere encounter.
     ...(authoredOn ? { authoredOn } : {}),
     requester: { reference: '#org-origin', display: originOrg.name },
     performer: [{ reference: '#org-dest', display: destOrg.name }],
