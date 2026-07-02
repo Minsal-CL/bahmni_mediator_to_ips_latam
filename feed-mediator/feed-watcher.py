@@ -104,7 +104,10 @@ def notify_all_endpoints(uuid):
         ("PROCEDURE", OPENHIM_PROCEDURE_ENDPOINT),
         ("SERVICEREQUEST", OPENHIM_SERVICEREQUEST_ENDPOINT),
         ("MEDICATIONSTATEMENT", OPENHIM_MEDICATIONSTATEMENT_ENDPOINT),
-        ("CONTRARREFERENCIA", OPENHIM_CONTRARREFERENCIA_ENDPOINT),
+        # Contrarreferencia: DESHABILITADO. La respuesta a la interconsulta se genera desde el
+        # diálogo "Completar" del dashboard (arma y POSTea el MHD directo, linkeado al SR clickeado).
+        # Ya no se usa el formulario de observaciones de Bahmni ni el mediador 8020 para esto.
+        # ("CONTRARREFERENCIA", OPENHIM_CONTRARREFERENCIA_ENDPOINT),
     ]
 
     results = {}

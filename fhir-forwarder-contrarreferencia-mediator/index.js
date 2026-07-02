@@ -84,6 +84,14 @@ registerMediator(openhimConfig, mediatorConfig, err => {
 
 const app = express()
 app.use(express.json({ limit: '20mb' }))
+// CORS: el dashboard (browser) llama /_answer directo. Permite el origin de Bahmni (o '*').
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', process.env.CR_CORS_ORIGIN || '*')
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+  if (req.method === 'OPTIONS') return res.sendStatus(204)
+  next()
+})
 
 // ============================================================================
 // Configuración de mapeo (UUID del formulario "Contrarreferencia")
@@ -115,6 +123,13 @@ const MASTER_ID_SYSTEM   = process.env.CR_MASTER_ID_SYSTEM   || 'urn:ietf:rfc:39
 // Organización DESTINO (autor de la contrarreferencia = el especialista que responde). En dev = CL.
 const AUTHOR_ORG_NAME    = process.env.CR_AUTHOR_ORG_NAME    || 'Hospital Clínico San Borja Arriarán'
 const AUTHOR_ORG_COUNTRY = process.env.CR_AUTHOR_ORG_COUNTRY || 'CL'
+// Perfiles adicionales requeridos por la validación RACSEL del MHD
+const PROFILE_LIST    = process.env.CR_LIST_PROFILE    || 'http://racsel.org/StructureDefinition/LACList'
+const PROFILE_PATIENT = process.env.CR_PATIENT_PROFILE || 'http://racsel.org/StructureDefinition/LACPatient'
+// SubmissionSet (LACList): code fijo + extensión sourceId (1..1, identificador del publicador)
+const MHD_LIST_CODE_SYSTEM = 'https://profiles.ihe.net/ITI/MHD/CodeSystem/MHDlistTypes'
+const SOURCE_ID_EXT = 'https://profiles.ihe.net/ITI/MHD/StructureDefinition/ihe-sourceId'
+const CR_SOURCE_ID  = process.env.CR_SOURCE_ID || 'urn:oid:2.16.152' // OID nodo Chile (ajustable)
 
 // Resolución del ServiceRequest (enlace de vuelta). Identificadores del paciente en orden: RUN/RUT, Pasaporte.
 const SR_STATUS_FILTER      = process.env.CR_SR_STATUS_FILTER    || 'active'
@@ -216,16 +231,49 @@ function buildAuthorOrg() {
   return { resourceType: 'Organization', meta: { profile: [PROFILE_ORG_LAC] }, name: AUTHOR_ORG_NAME, address: [{ country: AUTHOR_ORG_COUNTRY }] }
 }
 
-function buildComposition({ patientUrl, authorUrl, date, narrative, srRef }) {
-  const div = `<div xmlns="http://www.w3.org/1999/xhtml">${narrative}</div>`
+// Escapa el texto para incrustarlo en el div XHTML de la narrativa.
+function escXhtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Patient limpio para LACPatient: quita extensiones OpenMRS (ej. identifier#location) y campos ajenos.
+function sanitizePatientForLac(patient) {
+  const names = (patient.name || []).map(n => ({
+    ...(n.use ? { use: n.use } : {}),
+    ...(n.family ? { family: n.family } : {}),
+    ...(Array.isArray(n.given) ? { given: n.given } : {}),
+    ...(n.text ? { text: n.text } : {})
+  }))
+  const ids = (patient.identifier || []).map(id => ({
+    ...(id.use ? { use: id.use } : {}),
+    ...(id.type ? { type: id.type } : {}),
+    ...(id.system ? { system: id.system } : {}),
+    ...(id.value ? { value: id.value } : {})
+  }))
+  return {
+    resourceType: 'Patient',
+    id: patient.id,
+    meta: { profile: [PROFILE_PATIENT] },
+    ...(ids.length ? { identifier: ids } : {}),
+    ...(names.length ? { name: names } : {}),
+    ...(patient.gender ? { gender: patient.gender } : {}),
+    ...(patient.birthDate ? { birthDate: patient.birthDate } : {})
+  }
+}
+
+// Composition (LACCompositionIT). El Organization autor va CONTENIDO (LACBundleDocIT solo admite
+// Composition + Patient como entradas). Referencias internas del documento = urn:uuid absolutas.
+function buildComposition({ patientUrn, authorOrg, date, narrative, srRef }) {
+  const div = `<div xmlns="http://www.w3.org/1999/xhtml">${escXhtml(narrative)}</div>`
   return {
     resourceType: 'Composition',
     meta: { profile: [PROFILE_COMP] },
+    contained: [{ ...authorOrg, id: 'org-author' }],
     status: 'final',
     type: { coding: [COMP_TYPE], text: COMP_TYPE.display },
-    subject: { reference: patientUrl },
+    subject: { reference: patientUrn },
     date,
-    author: [{ reference: authorUrl }],
+    author: [{ reference: '#org-author' }],
     title: 'Contrarreferencia',
     // event.detail enlaza (semánticamente) la nota con la orden/interconsulta que responde.
     ...(srRef ? { event: [{ detail: [{ reference: srRef }] }] } : {}),
@@ -241,40 +289,45 @@ function buildComposition({ patientUrl, authorUrl, date, narrative, srRef }) {
 // Ensambla la transacción MHD (LACBundleTransactionMHDIT) con el documento embebido.
 function buildMhdTransaction({ patient, narrative, date, srRef }) {
   const u = () => `urn:uuid:${randomUUID()}`
-  // Patient con fullUrl = Patient/{id} para consistencia de referencias dentro del documento.
-  const patientUrl = `Patient/${patient.id}`
-  const authorUrl = u(), compUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
+  // fullUrls ABSOLUTAS (urn:uuid) — requisito del bundle documento.
+  const patientUrn = u(), compUrn = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
 
   const authorOrg   = buildAuthorOrg()
-  const composition = buildComposition({ patientUrl, authorUrl, date, narrative, srRef })
+  const lacPatient  = sanitizePatientForLac(patient)
+  const composition = buildComposition({ patientUrn, authorOrg, date, narrative, srRef })
 
-  // Document Bundle (LACBundleDocIT) — autocontenido
+  // Document Bundle (LACBundleDocIT) — CERRADO: solo Composition (autor contenido) + Patient.
   const docBundle = {
     resourceType: 'Bundle', meta: { profile: [PROFILE_DOCBNDL] }, type: 'document',
     identifier: { system: MASTER_ID_SYSTEM, value: docBundleUrl }, timestamp: date,
     entry: [
-      { fullUrl: compUrl,    resource: composition },
-      { fullUrl: authorUrl,  resource: authorOrg },
-      { fullUrl: patientUrl, resource: patient }
+      { fullUrl: compUrn,    resource: composition },
+      { fullUrl: patientUrn, resource: lacPatient }
     ]
   }
 
-  // DocumentReference (LACDocReferenceIT) — type 11488-4 para que el origen lo consulte por type.
+  // DocumentReference (LACDocReferenceIT) — requiere author (1..*): Organización contenida.
   // context.related enlaza (a nivel MHD, consultable) la respuesta con el ServiceRequest de origen.
   const docRef = {
     resourceType: 'DocumentReference', meta: { profile: [PROFILE_DOCREF] },
+    contained: [{ ...authorOrg, id: 'org-author' }],
     masterIdentifier: { system: MASTER_ID_SYSTEM, value: docBundleUrl },
     status: 'current',
     type: { coding: [DOCREF_TYPE] },
     subject: { reference: `Patient/${patient.id}` },
     date,
+    author: [{ reference: '#org-author' }],
     ...(srRef ? { context: { related: [{ reference: srRef }] } } : {}),
     content: [{ attachment: { contentType: 'application/fhir+json', url: docBundleUrl } }]
   }
 
-  // List / SubmissionSet (LACList)
+  // List / SubmissionSet (LACList): meta.profile + code fijo 'submissionset' + extensión sourceId (1..1).
   const list = {
-    resourceType: 'List', status: 'current', mode: 'working', date,
+    resourceType: 'List', meta: { profile: [PROFILE_LIST] },
+    extension: [{ url: SOURCE_ID_EXT, valueIdentifier: { value: CR_SOURCE_ID } }],
+    status: 'current', mode: 'working',
+    code: { coding: [{ system: MHD_LIST_CODE_SYSTEM, code: 'submissionset' }] },
+    date,
     entry: [{ item: { reference: docRefUrl } }]
   }
 
@@ -351,6 +404,44 @@ app.post(['/forwardercontrarreferencia/_event', '/forwarderContrarreferencia/_ev
     sendOpenhim(res, { status: 'ok', uuid, mhd: true, serviceRequest: srRef || null }, orch)
   } catch (e) {
     logStep('❌ ERROR:', e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// Respuesta DIRECTA desde el dashboard (sin formulario de obs). Recibe la narrativa + el SR a
+// contestar y el paciente; arma el MHD (mismo builder) y lo POSTea al nodo nacional (ITI-65).
+// Body: { patientUuid?, identifier?, narrative, srRef? }
+app.post(['/forwardercontrarreferencia/_answer', '/forwarderContrarreferencia/_answer'], async (req, res) => {
+  logStep('📩 POST /_answer', { ...req.body, narrative: req.body?.narrative ? '(texto)' : undefined })
+  const { patientUuid, identifier, narrative, srRef } = req.body || {}
+  if (!narrative || !String(narrative).trim()) return res.status(400).json({ error: 'Missing narrative' })
+
+  const orch = []
+  try {
+    // 1) Patient: por uuid desde el proxy OpenMRS; si no, uno mínimo con el identifier.
+    let patient
+    if (patientUuid) {
+      try { patient = await getFromProxy(`/Patient/${patientUuid}`) } catch (e) { logStep('⚠️ Patient del proxy no disponible:', e.message) }
+    }
+    if (!patient || patient.resourceType !== 'Patient') {
+      patient = { resourceType: 'Patient', id: patientUuid || randomUUID(), ...(identifier ? { identifier: [{ value: identifier }] } : {}) }
+    }
+    await putPatientToNational(patient, orch)
+
+    // 2) SR a contestar: el que envía el dashboard (fila clickeada); si no viene, auto-resolver.
+    let resolvedSrRef = srRef
+    if (!resolvedSrRef) { const hit = await resolveServiceRequest(patient); resolvedSrRef = hit?.reference }
+
+    // 3) Documento MHD (ITI-65) → nodo nacional
+    if (!MHD_ENDPOINT) throw new Error('CR_MHD_ENDPOINT no configurado')
+    const tx = buildMhdTransaction({ patient, narrative: String(narrative).trim(), date: new Date().toISOString(), srRef: resolvedSrRef })
+    dumpBundle('contrarreferencia', patient.id, tx)
+    await submitMhd(tx, orch)
+
+    logStep('🎉 Done Contrarreferencia (_answer) | SR:', resolvedSrRef || '—')
+    sendOpenhim(res, { status: 'ok', patient: patient.id, serviceRequest: resolvedSrRef || null, mhd: true }, orch)
+  } catch (e) {
+    logStep('❌ ERROR (_answer):', e.message)
     res.status(500).json({ error: e.message })
   }
 })
