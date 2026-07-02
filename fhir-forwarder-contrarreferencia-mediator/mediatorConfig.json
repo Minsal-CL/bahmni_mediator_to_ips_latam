@@ -1,0 +1,48 @@
+{
+  "urn": "urn:mediator:fhir-forwarder-contrarreferencia",
+  "version": "1.0.0",
+  "name": "FHIR Event Forwarder Contrarreferencia Mediator",
+  "description": "Toma el formulario Contrarreferencia (OpenMRS obs) y construye el documento MHD (Composition LACCompositionIT, IG RACSEL Interconsulta Transfronteriza). Lo POSTea como transacción ITI-65 al nodo nacional y lo enlaza al ServiceRequest activo del paciente.",
+  "defaultChannelConfig": [
+    {
+      "name": "FHIR Event Forwarder Contrarreferencia Mediator",
+      "urlPattern": "^/forwardercontrarreferencia/_event$",
+      "routes": [
+        {
+          "name": "FHIR Event Forwarder Contrarreferencia Mediator Route",
+          "host": "10.68.174.209",
+          "path": "/forwardercontrarreferencia/_event",
+          "port": "8020",
+          "primary": true,
+          "type": "http"
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["POST"],
+      "type": "http"
+    },
+    {
+      "name": "FHIR Event Forwarder Contrarreferencia Mediator Health Channel",
+      "urlPattern": "^/forwardercontrarreferencia/_health$",
+      "routes": [
+        {
+          "name": "FHIR Event Forwarder Contrarreferencia Mediator Health Route",
+          "host": "10.68.174.209",
+          "path": "/forwardercontrarreferencia/_health",
+          "port": "8020",
+          "primary": true,
+          "type": "http"
+        }
+      ],
+      "allow": ["admin"],
+      "methods": ["GET"],
+      "type": "http"
+    }
+  ],
+  "endpoints": [
+    { "name": "event-endpoint",  "path": "/forwardercontrarreferencia/_event",  "method": "post" },
+    { "name": "health-endpoint", "path": "/forwardercontrarreferencia/_health", "method": "get" }
+  ],
+  "heartbeatPath": "/forwardercontrarreferencia/_health",
+  "heartbeatInterval": 30000
+}

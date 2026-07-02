@@ -135,6 +135,15 @@ services:
       - ./tmp:/tmp
     restart: unless-stopped
 
+  fhir-forwarder-contrarreferencia-mediator:
+    build: ./fhir-forwarder-contrarreferencia-mediator
+    env_file: ./.env
+    ports:
+      - "8020:8020"
+    volumes:
+      - ./tmp:/tmp
+    restart: unless-stopped
+
 networks:
   default:
     name: lacpass-himnet

@@ -121,10 +121,12 @@ const SR_ID_SYSTEM = process.env.SR_IDENTIFIER_SYSTEM || 'http://minsal.cl/sid/s
 const ORIGIN_ORG_NAME    = process.env.SR_ORIGIN_ORG_NAME    || 'Hospital Clínico San Borja Arriarán'
 const ORIGIN_ORG_COUNTRY = process.env.SR_ORIGIN_ORG_COUNTRY || 'CL' // ISO 3166-1 alpha-2
 
-// ── Documento MHD "Interconsulta Transfronteriza" (Fase 2, IG RACSEL) ──
-// Si SR_MHD_ENABLED=true, además de subir el ServiceRequest, ensambla el documento
-// (Composition + Document Bundle + DocumentReference + List) y lo POSTea como transacción MHD (ITI-65).
-const MHD_ENABLED  = (process.env.SR_MHD_ENABLED || 'true').toLowerCase() === 'true'
+// ── Documento MHD "Interconsulta Transfronteriza" ──
+// IMPORTANTE (IG RACSEL, verificado): la INTERCONSULTA (ida) viaja SOLO como ServiceRequest suelto
+// (LACServiceRequestIT); NO es un documento MHD. El documento MHD es la RESPUESTA/contrarreferencia
+// (LACBundleTransactionMHDIT), que emite el mediador de contrarreferencia. Por eso este bloque queda
+// DESACTIVADO por defecto; se conserva tras SR_MHD_ENABLED=true solo por compatibilidad/experimentos.
+const MHD_ENABLED  = (process.env.SR_MHD_ENABLED || 'false').toLowerCase() === 'true'
 // Dos servidores FHIR DISTINTOS:
 //   - Recurso clínico (Paso 1) -> SR_FHIR_RESOURCE_URL (default FHIR_NODE_URL) = hapilocal
 //   - Documento MHD  (Paso 2)  -> SR_MHD_ENDPOINT                              = hapinacional
