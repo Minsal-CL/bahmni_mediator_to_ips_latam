@@ -151,7 +151,7 @@ const PROFILE_TXBNDL  = process.env.CR_TXBUNDLE_PROFILE    || 'http://racsel.org
 const PROFILE_ORG_LAC = process.env.CR_ORG_PROFILE_URL     || 'http://racsel.org/StructureDefinition/LACOrganization'
 // Composition: nota de interconsulta (Consultation note) con la única sección obligatoria del perfil.
 const DOCREF_TYPE   = { system: 'http://loinc.org', code: '57133-1', display: 'Referral note' }
-const COMP_TYPE     = { system: 'http://loinc.org', code: '11488-4', display: 'Consultation note' }
+const COMP_TYPE     = { system: 'http://loinc.org', code: '11488-4', display: 'Consult note' }
 const SECTION_CODE  = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
 const SECTION_TITLE = 'Resultado de la Evaluación'
 const MASTER_ID_SYSTEM   = process.env.CR_MASTER_ID_SYSTEM   || 'urn:ietf:rfc:3986'
@@ -161,6 +161,12 @@ const AUTHOR_ORG_COUNTRY = process.env.CR_AUTHOR_ORG_COUNTRY || 'CL'
 // Perfiles adicionales requeridos por la validación RACSEL del MHD
 const PROFILE_LIST    = process.env.CR_LIST_PROFILE    || 'http://racsel.org/StructureDefinition/LACList'
 const PROFILE_PATIENT = process.env.CR_PATIENT_PROFILE || 'http://racsel.org/StructureDefinition/LACPatient'
+// LACPatient exige slices identifier: national (type v2-0203#NI) e international (type v2-0203#PPN),
+// con system = URN OID (constraint lac-pat-2). OIDs configurables (defaults = Chile / pasaporte LAC).
+const V2_0203     = 'http://terminology.hl7.org/CodeSystem/v2-0203'
+const NAT_ID_OID  = process.env.CR_NATIONAL_ID_OID || 'urn:oid:2.16.152'
+const PPN_ID_OID  = process.env.CR_PASSPORT_ID_OID || 'urn:oid:2.16.840.1.113883.4.330.152'
+const NAT_ID_CODE = process.env.CR_NATIONAL_ID_TYPE_CODE || 'NI' // National unique individual identifier
 // SubmissionSet (LACList): code fijo + extensión sourceId (1..1, identificador del publicador)
 const MHD_LIST_CODE_SYSTEM = 'https://profiles.ihe.net/ITI/MHD/CodeSystem/MHDlistTypes'
 const SOURCE_ID_EXT = 'https://profiles.ihe.net/ITI/MHD/StructureDefinition/ihe-sourceId'
@@ -271,7 +277,20 @@ function escXhtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-// Patient limpio para LACPatient: quita extensiones OpenMRS (ej. identifier#location) y campos ajenos.
+// Mapea un identifier de OpenMRS a un slice LACPatient (national o international), con system=URN OID
+// y type coding v2-0203 (sin type.text, que el perfil no permite en el slice).
+function lacIdentifier(id) {
+  const txt = (id && id.type && id.type.text || '').toLowerCase()
+  const cod = (id && id.type && Array.isArray(id.type.coding) ? id.type.coding.map(c => String(c && c.code || '')) : [])
+  const isPassport = /pasaporte|passport|ppn/.test(txt) || cod.some(c => c.toUpperCase() === 'PPN')
+  if (isPassport) {
+    return { use: 'official', system: PPN_ID_OID, type: { coding: [{ system: V2_0203, code: 'PPN' }] }, value: id.value }
+  }
+  return { use: 'usual', system: NAT_ID_OID, type: { coding: [{ system: V2_0203, code: NAT_ID_CODE }] }, value: id.value }
+}
+
+// Patient conforme a LACPatient: limpia extensiones OpenMRS y reconstruye los identifier en los slices
+// national + international (ambos requeridos), con system=URN OID.
 function sanitizePatientForLac(patient) {
   const names = (patient.name || []).map(n => ({
     ...(n.use ? { use: n.use } : {}),
@@ -279,17 +298,21 @@ function sanitizePatientForLac(patient) {
     ...(Array.isArray(n.given) ? { given: n.given } : {}),
     ...(n.text ? { text: n.text } : {})
   }))
-  const ids = (patient.identifier || []).map(id => ({
-    ...(id.use ? { use: id.use } : {}),
-    ...(id.type ? { type: id.type } : {}),
-    ...(id.system ? { system: id.system } : {}),
-    ...(id.value ? { value: id.value } : {})
-  }))
+  const raw = (Array.isArray(patient.identifier) ? patient.identifier : []).filter(id => id && id.value)
+  let ids = raw.map(lacIdentifier)
+  // Asegurar AMBOS slices (national + international); si falta uno, se deriva del primer valor disponible.
+  const anyVal = ids.length ? ids[0].value : (patient.id || 'UNKNOWN')
+  if (!ids.some(i => i.system === NAT_ID_OID)) {
+    ids.unshift({ use: 'usual', system: NAT_ID_OID, type: { coding: [{ system: V2_0203, code: NAT_ID_CODE }] }, value: anyVal })
+  }
+  if (!ids.some(i => i.system === PPN_ID_OID)) {
+    ids.push({ use: 'official', system: PPN_ID_OID, type: { coding: [{ system: V2_0203, code: 'PPN' }] }, value: anyVal })
+  }
   return {
     resourceType: 'Patient',
     id: patient.id,
     meta: { profile: [PROFILE_PATIENT] },
-    ...(ids.length ? { identifier: ids } : {}),
+    identifier: ids,
     ...(names.length ? { name: names } : {}),
     ...(patient.gender ? { gender: patient.gender } : {}),
     ...(patient.birthDate ? { birthDate: patient.birthDate } : {})
