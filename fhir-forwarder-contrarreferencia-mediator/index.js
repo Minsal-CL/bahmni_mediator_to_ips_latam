@@ -337,13 +337,12 @@ function buildComposition({ patientUrn, authorOrg, date, narrative, srRef }) {
     date,
     author: [{ reference: '#org-author' }],
     title: 'Contrarreferencia',
-    // event.detail enlaza (semánticamente) la nota con la orden/interconsulta que responde.
-    ...(srRef ? { event: [{ detail: [{ reference: srRef }] }] } : {}),
+    // NOTA: el enlace al ServiceRequest NO va dentro del documento (rompe la autocontención del
+    // Bundle documento). Vive en DocumentReference.context.related (nivel MHD, consultable).
     section: [{
       title: SECTION_TITLE,
       code: { coding: [SECTION_CODE] },
-      text: { status: 'generated', div },
-      ...(srRef ? { entry: [{ reference: srRef }] } : {})
+      text: { status: 'generated', div }
     }]
   }
 }
