@@ -151,7 +151,9 @@ const PROFILE_TXBNDL  = process.env.CR_TXBUNDLE_PROFILE    || 'http://racsel.org
 const PROFILE_ORG_LAC = process.env.CR_ORG_PROFILE_URL     || 'http://racsel.org/StructureDefinition/LACOrganization'
 // Composition: nota de interconsulta (Consultation note) con la única sección obligatoria del perfil.
 const DOCREF_TYPE   = { system: 'http://loinc.org', code: '57133-1', display: 'Referral note' }
-const COMP_TYPE     = { system: 'http://loinc.org', code: '11488-4', display: 'Consult note' }
+// LACCompositionIT FIJA el display en 'Consultation note' (pattern MANDATORY). El validador de
+// terminología prefiere 'Consult note' pero eso es solo RECOMMENDED: manda el pattern fijo del perfil.
+const COMP_TYPE     = { system: 'http://loinc.org', code: '11488-4', display: 'Consultation note' }
 const SECTION_CODE  = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
 const SECTION_TITLE = 'Resultado de la Evaluación'
 const MASTER_ID_SYSTEM   = process.env.CR_MASTER_ID_SYSTEM   || 'urn:ietf:rfc:3986'
@@ -164,8 +166,10 @@ const PROFILE_PATIENT = process.env.CR_PATIENT_PROFILE || 'http://racsel.org/Str
 // LACPatient exige slices identifier: national (type v2-0203#NI) e international (type v2-0203#PPN),
 // con system = URN OID (constraint lac-pat-2). OIDs configurables (defaults = Chile / pasaporte LAC).
 const V2_0203     = 'http://terminology.hl7.org/CodeSystem/v2-0203'
-const NAT_ID_OID  = process.env.CR_NATIONAL_ID_OID || 'urn:oid:2.16.152'
-const PPN_ID_OID  = process.env.CR_PASSPORT_ID_OID || 'urn:oid:2.16.840.1.113883.4.330.152'
+// OJO: el separador es PUNTO ('urn:oid.'), no dos puntos, para satisfacer la constraint lac-pat-2 del IG
+// (startsWith('urn:oid.2.16.'))  — es lo mismo que hace el mediador ITI-65 del IPS (toUrnOid con ".").
+const NAT_ID_OID  = process.env.CR_NATIONAL_ID_OID || 'urn:oid.2.16.152'
+const PPN_ID_OID  = process.env.CR_PASSPORT_ID_OID || 'urn:oid.2.16.840.1.113883.4.330.152'
 const NAT_ID_CODE = process.env.CR_NATIONAL_ID_TYPE_CODE || 'NI' // National unique individual identifier
 // SubmissionSet (LACList): code fijo + extensión sourceId (1..1, identificador del publicador)
 const MHD_LIST_CODE_SYSTEM = 'https://profiles.ihe.net/ITI/MHD/CodeSystem/MHDlistTypes'
