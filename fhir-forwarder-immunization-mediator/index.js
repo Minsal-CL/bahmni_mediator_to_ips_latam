@@ -52,7 +52,7 @@ const ICVP_STRICT = /^true$/i.test(process.env.ICVP_STRICT || 'true')
 
 // LAC PASS
 const LAC_IMM_PROFILE = 'http://lacpass.racsel.org/StructureDefinition/lac-immunization'
-const LAC_ORG_PROFILE = 'http://lacpass.racsel.org/StructureDefinition/lac-organization'
+const LAC_ORG_PROFILE = 'http://racsel.org/StructureDefinition/LACOrganization'
 const EXT_LAC_BRAND      = 'http://lacpass.racsel.org/StructureDefinition/DDCCEventBrand'
 const EXT_LAC_MA         = 'http://lacpass.racsel.org/StructureDefinition/DDCCVaccineMarketAuthorization'
 const EXT_LAC_COUNTRY    = 'http://lacpass.racsel.org/StructureDefinition/DDCCCountryOfEvent'

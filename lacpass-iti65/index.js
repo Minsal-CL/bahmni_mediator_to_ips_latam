@@ -171,9 +171,9 @@ const DEFAULT_PPN_OID = toUrnOid(LAC_PASSPORT_ID_SYSTEM_OID || '2.16.840.1.11388
 
 // Perfiles LAC (racsel) — coinciden con el validador
 const LAC_PROFILES = {
-  BUNDLE: 'http://lacpass.racsel.org/StructureDefinition/lac-bundle',
-  COMPOSITION: 'http://lacpass.racsel.org/StructureDefinition/lac-composition',
-  PATIENT: 'http://lacpass.racsel.org/StructureDefinition/lac-patient'
+  BUNDLE: 'http://racsel.org/StructureDefinition/LACBundleIPS"',
+  COMPOSITION: 'http://racsel.org/StructureDefinition/LACCompositionIPS',
+  PATIENT: 'http://racsel.org/StructureDefinition/LACPatient'
 };
 
 // Perfiles IPS (http)
@@ -453,17 +453,17 @@ function ensureEntrySliceOrder(bundle) {
   const compEntry = bundle.entry[0];
   const patEntry  = bundle.entry[1];
   if (compEntry?.resource?.resourceType === 'Composition') {
-    addProfile(compEntry.resource, 'http://lacpass.racsel.org/StructureDefinition/lac-composition');
+    addProfile(compEntry.resource, 'http://racsel.org/StructureDefinition/LACCompositionIPS');
   }
   if (patEntry?.resource?.resourceType === 'Patient') {
-    addProfile(patEntry.resource, 'http://lacpass.racsel.org/StructureDefinition/lac-patient');
+    addProfile(patEntry.resource, 'http://racsel.org/StructureDefinition/LACPatient');
     addProfile(patEntry.resource, 'http://hl7.org/fhir/uv/ips/StructureDefinition/Patient-uv-ips');
   }
   // Perfiles en el Bundle
   bundle.meta = bundle.meta || {};
   bundle.meta.profile = Array.isArray(bundle.meta.profile) ? bundle.meta.profile : [];
-  if (!bundle.meta.profile.includes('http://lacpass.racsel.org/StructureDefinition/lac-bundle')) {
-    bundle.meta.profile.push('http://lacpass.racsel.org/StructureDefinition/lac-bundle');
+  if (!bundle.meta.profile.includes('http://racsel.org/StructureDefinition/LACBundleIPS')) {
+    bundle.meta.profile.push('http://racsel.org/StructureDefinition/LACBundleIPS');
   }
 
   // Composition.subject.reference debe apuntar al fullUrl del Patient (ya transformado)
@@ -2023,7 +2023,7 @@ function fixBundleValidationIssues(summaryBundle) {
       console.error('❌ Bundle.entry[0] debe ser Composition');
       return false;
     }
-    if (!comp.resource.meta?.profile?.includes('http://lacpass.racsel.org/StructureDefinition/lac-composition')) {
+    if (!comp.resource.meta?.profile?.includes('http://racsel.org/StructureDefinition/LACCompositionIPS')) {
       console.error('❌ Composition no tiene perfil lac-composition');
       console.error(`   Perfiles actuales: ${comp.resource.meta?.profile?.join(', ') || 'ninguno'}`);
       return false;
@@ -2035,8 +2035,8 @@ function fixBundleValidationIssues(summaryBundle) {
       console.error('❌ Bundle.entry[1] debe ser Patient');
       return false;
     }
-    if (!pat.resource.meta?.profile?.includes('http://lacpass.racsel.org/StructureDefinition/lac-patient')) {
-      console.error('❌ Patient no tiene perfil lac-patient');
+    if (!pat.resource.meta?.profile?.includes('http://racsel.org/StructureDefinition/LACPatient')) {
+      console.error('❌ Patient no tiene perfil LACPatient');
       console.error(`   Perfiles actuales: ${pat.resource.meta?.profile?.join(', ') || 'ninguno'}`);
       return false;
     }
@@ -2368,7 +2368,7 @@ function normalizeOrganizationResource(orga) {
     ];
 
     orga.meta = {
-        "profile": [ "http://lacpass.racsel.org/StructureDefinition/lac-organization" ]
+        "profile": [ "http://racsel.org/StructureDefinition/LACOrganization" ]
     };
     orga.identifier = identifiers;
     orga.name = 'Clínica Las Condes';

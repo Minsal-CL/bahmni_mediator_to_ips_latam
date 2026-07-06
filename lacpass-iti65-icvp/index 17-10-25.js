@@ -2022,7 +2022,7 @@ function normalizeOrganizationResource(orga) {
     ];
 
     orga.meta = {
-        "profile": [ "http://lacpass.racsel.org/StructureDefinition/lac-organization" ]
+        "profile": [ "http://racsel.org/StructureDefinition/LACOrganization" ]
     };
     orga.identifier = identifiers;
     orga.name = 'Clínica Las Condes';
