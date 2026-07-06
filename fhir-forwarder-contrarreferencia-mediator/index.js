@@ -34,12 +34,22 @@ function mkOrch(name, method, url, reqBody, res) {
     response: { status: res?.status || 0, body: safe(res?.data), timestamp: new Date().toISOString() }
   }
 }
-function sendOpenhim(res, summary, orchestrations) {
+// Headers CORS para el origin dado (allowlist CORS_ORIGIN). OpenHIM reconstruye la respuesta al
+// browser desde response.headers, así que hay que inyectarlos aquí (no basta el middleware).
+function corsHeadersFor(origin) {
+  if (!origin) return {}
+  const allow = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean)
+  if (allow.length === 0 || allow.includes(origin)) {
+    return { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Credentials': 'true', 'Vary': 'Origin' }
+  }
+  return {}
+}
+function sendOpenhim(res, summary, orchestrations, origin) {
   res.set('Content-Type', 'application/json+openhim')
   res.send(JSON.stringify({
     'x-mediator-urn': mediatorConfig.urn,
     status: 'Successful',
-    response: { status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(summary), timestamp: new Date().toISOString() },
+    response: { status: 200, headers: { 'content-type': 'application/json', ...corsHeadersFor(origin) }, body: JSON.stringify(summary), timestamp: new Date().toISOString() },
     orchestrations: orchestrations || []
   }))
 }
@@ -61,29 +71,62 @@ if (process.env.NODE_ENV === 'development') {
 
 function logStep(msg, ...d) { console.log(new Date().toISOString(), msg, ...d) }
 
+// Crea o ACTUALIZA el canal en OpenHIM. Si ya existe, hace PUT para que cambios de config
+// (ej. passThroughHeaders para CORS) tomen efecto al redeploy — antes se saltaba y no se aplicaban.
+async function upsertChannel(ch) {
+  const auth = { username: openhimConfig.username, password: openhimConfig.password }
+  const body = { ...ch, mediator_urn: mediatorConfig.urn }
+  try {
+    await axios.post(`${openhimConfig.apiURL}/channels`, body, { auth })
+    console.log(`✅ Channel created: ${ch.name}`)
+  } catch (e) {
+    const msg = String(e?.response?.data || e?.message || e)
+    const isDup = msg.toLowerCase().includes('duplicate') || e?.response?.status === 409
+    if (!isDup) { console.error(`❌ Channel ${ch.name} error:`, msg); return }
+    try {
+      const list = await axios.get(`${openhimConfig.apiURL}/channels`, { auth })
+      const existing = (list.data || []).find(c => c.name === ch.name)
+      const id = existing && (existing._id || existing.id || existing.channelId || existing._uid)
+      if (id) {
+        await axios.put(`${openhimConfig.apiURL}/channels/${id}`, body, { auth })
+        console.log(`♻️ Channel updated: ${ch.name}`)
+      } else {
+        console.log(`ℹ️ Channel already exists but could not determine id: ${ch.name}`)
+      }
+    } catch (e2) {
+      console.error(`❌ Channel ${ch.name} update error:`, String(e2?.response?.data || e2?.message || e2))
+    }
+  }
+}
+
 // 1) Register mediator & channels, then start heartbeat
 registerMediator(openhimConfig, mediatorConfig, err => {
   if (err) { console.error('❌ Registration error:', err); process.exit(1) }
   console.log('✅ Forwarder Contrarreferencia registered')
-  Promise.all(
-    (mediatorConfig.defaultChannelConfig || []).map(ch =>
-      axios.post(
-        `${openhimConfig.apiURL}/channels`,
-        { ...ch, mediator_urn: mediatorConfig.urn },
-        { auth: { username: openhimConfig.username, password: openhimConfig.password } }
-      )
-      .then(() => console.log(`✅ Channel created: ${ch.name}`))
-      .catch(e => {
-        const msg = e?.response?.data || e?.message || e.toString()
-        if (String(msg).includes('duplicate key error')) console.log(`ℹ️ Channel already exists: ${ch.name}`)
-        else console.error(`❌ Channel ${ch.name} error:`, msg)
-      })
-    )
-  ).then(() => { console.log('✅ All channels processed'); activateHeartbeat(openhimConfig) })
+  Promise.all((mediatorConfig.defaultChannelConfig || []).map(upsertChannel))
+    .then(() => { console.log('✅ All channels processed'); activateHeartbeat(openhimConfig) })
 })
 
 const app = express()
 app.use(express.json({ limit: '20mb' }))
+// CORS: el dashboard (browser) llama /_answer directo. Mismo patrón que los mediadores que ya
+// funcionan (DCV-ICVP, lacpass): reflejar el origin del allowlist CORS_ORIGIN + Allow-Credentials.
+// (Con credenciales/Authorization NO se puede usar '*': hay que devolver el origin exacto.)
+const CORS_ALLOW = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim()).filter(Boolean)
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  if (req.method === 'OPTIONS') logStep('🔎 OPTIONS preflight | origin:', origin || '(sin origin)', '| path:', req.originalUrl)
+  if (origin && (CORS_ALLOW.length === 0 || CORS_ALLOW.includes(origin))) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  }
+  res.setHeader('Vary', 'Origin')
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-OpenHIM-ClientID')
+  res.setHeader('Access-Control-Expose-Headers', 'X-OpenHIM-TransactionID')
+  if (req.method === 'OPTIONS') return res.sendStatus(204)
+  next()
+})
 
 // ============================================================================
 // Configuración de mapeo (UUID del formulario "Contrarreferencia")
@@ -108,6 +151,8 @@ const PROFILE_TXBNDL  = process.env.CR_TXBUNDLE_PROFILE    || 'http://racsel.org
 const PROFILE_ORG_LAC = process.env.CR_ORG_PROFILE_URL     || 'http://racsel.org/StructureDefinition/LACOrganization'
 // Composition: nota de interconsulta (Consultation note) con la única sección obligatoria del perfil.
 const DOCREF_TYPE   = { system: 'http://loinc.org', code: '57133-1', display: 'Referral note' }
+// LACCompositionIT FIJA el display en 'Consultation note' (pattern MANDATORY). El validador de
+// terminología prefiere 'Consult note' pero eso es solo RECOMMENDED: manda el pattern fijo del perfil.
 const COMP_TYPE     = { system: 'http://loinc.org', code: '11488-4', display: 'Consultation note' }
 const SECTION_CODE  = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
 const SECTION_TITLE = 'Resultado de la Evaluación'
@@ -115,6 +160,21 @@ const MASTER_ID_SYSTEM   = process.env.CR_MASTER_ID_SYSTEM   || 'urn:ietf:rfc:39
 // Organización DESTINO (autor de la contrarreferencia = el especialista que responde). En dev = CL.
 const AUTHOR_ORG_NAME    = process.env.CR_AUTHOR_ORG_NAME    || 'Hospital Clínico San Borja Arriarán'
 const AUTHOR_ORG_COUNTRY = process.env.CR_AUTHOR_ORG_COUNTRY || 'CL'
+// Perfiles adicionales requeridos por la validación RACSEL del MHD
+const PROFILE_LIST    = process.env.CR_LIST_PROFILE    || 'http://racsel.org/StructureDefinition/LACList'
+const PROFILE_PATIENT = process.env.CR_PATIENT_PROFILE || 'http://racsel.org/StructureDefinition/LACPatient'
+// LACPatient exige slices identifier: national (type v2-0203#NI) e international (type v2-0203#PPN),
+// con system = URN OID (constraint lac-pat-2). OIDs configurables (defaults = Chile / pasaporte LAC).
+const V2_0203     = 'http://terminology.hl7.org/CodeSystem/v2-0203'
+// OJO: el separador es PUNTO ('urn:oid.'), no dos puntos, para satisfacer la constraint lac-pat-2 del IG
+// (startsWith('urn:oid.2.16.'))  — es lo mismo que hace el mediador ITI-65 del IPS (toUrnOid con ".").
+const NAT_ID_OID  = process.env.CR_NATIONAL_ID_OID || 'urn:oid.2.16.152'
+const PPN_ID_OID  = process.env.CR_PASSPORT_ID_OID || 'urn:oid.2.16.840.1.113883.4.330.152'
+const NAT_ID_CODE = process.env.CR_NATIONAL_ID_TYPE_CODE || 'NI' // National unique individual identifier
+// SubmissionSet (LACList): code fijo + extensión sourceId (1..1, identificador del publicador)
+const MHD_LIST_CODE_SYSTEM = 'https://profiles.ihe.net/ITI/MHD/CodeSystem/MHDlistTypes'
+const SOURCE_ID_EXT = 'https://profiles.ihe.net/ITI/MHD/StructureDefinition/ihe-sourceId'
+const CR_SOURCE_ID  = process.env.CR_SOURCE_ID || 'urn:oid:2.16.152' // OID nodo Chile (ajustable)
 
 // Resolución del ServiceRequest (enlace de vuelta). Identificadores del paciente en orden: RUN/RUT, Pasaporte.
 const SR_STATUS_FILTER      = process.env.CR_SR_STATUS_FILTER    || 'active'
@@ -216,24 +276,73 @@ function buildAuthorOrg() {
   return { resourceType: 'Organization', meta: { profile: [PROFILE_ORG_LAC] }, name: AUTHOR_ORG_NAME, address: [{ country: AUTHOR_ORG_COUNTRY }] }
 }
 
-function buildComposition({ patientUrl, authorUrl, date, narrative, srRef }) {
-  const div = `<div xmlns="http://www.w3.org/1999/xhtml">${narrative}</div>`
+// Escapa el texto para incrustarlo en el div XHTML de la narrativa.
+function escXhtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Mapea un identifier de OpenMRS a un slice LACPatient (national o international), con system=URN OID
+// y type coding v2-0203 (sin type.text, que el perfil no permite en el slice).
+function lacIdentifier(id) {
+  const txt = (id && id.type && id.type.text || '').toLowerCase()
+  const cod = (id && id.type && Array.isArray(id.type.coding) ? id.type.coding.map(c => String(c && c.code || '')) : [])
+  const isPassport = /pasaporte|passport|ppn/.test(txt) || cod.some(c => c.toUpperCase() === 'PPN')
+  if (isPassport) {
+    return { use: 'official', system: PPN_ID_OID, type: { coding: [{ system: V2_0203, code: 'PPN' }] }, value: id.value }
+  }
+  return { use: 'usual', system: NAT_ID_OID, type: { coding: [{ system: V2_0203, code: NAT_ID_CODE }] }, value: id.value }
+}
+
+// Patient conforme a LACPatient: limpia extensiones OpenMRS y reconstruye los identifier en los slices
+// national + international (ambos requeridos), con system=URN OID.
+function sanitizePatientForLac(patient) {
+  const names = (patient.name || []).map(n => ({
+    ...(n.use ? { use: n.use } : {}),
+    ...(n.family ? { family: n.family } : {}),
+    ...(Array.isArray(n.given) ? { given: n.given } : {}),
+    ...(n.text ? { text: n.text } : {})
+  }))
+  const raw = (Array.isArray(patient.identifier) ? patient.identifier : []).filter(id => id && id.value)
+  let ids = raw.map(lacIdentifier)
+  // Asegurar AMBOS slices (national + international); si falta uno, se deriva del primer valor disponible.
+  const anyVal = ids.length ? ids[0].value : (patient.id || 'UNKNOWN')
+  if (!ids.some(i => i.system === NAT_ID_OID)) {
+    ids.unshift({ use: 'usual', system: NAT_ID_OID, type: { coding: [{ system: V2_0203, code: NAT_ID_CODE }] }, value: anyVal })
+  }
+  if (!ids.some(i => i.system === PPN_ID_OID)) {
+    ids.push({ use: 'official', system: PPN_ID_OID, type: { coding: [{ system: V2_0203, code: 'PPN' }] }, value: anyVal })
+  }
+  return {
+    resourceType: 'Patient',
+    id: patient.id,
+    meta: { profile: [PROFILE_PATIENT] },
+    identifier: ids,
+    ...(names.length ? { name: names } : {}),
+    ...(patient.gender ? { gender: patient.gender } : {}),
+    ...(patient.birthDate ? { birthDate: patient.birthDate } : {})
+  }
+}
+
+// Composition (LACCompositionIT). El Organization autor va CONTENIDO (LACBundleDocIT solo admite
+// Composition + Patient como entradas). Referencias internas del documento = urn:uuid absolutas.
+function buildComposition({ patientUrn, authorOrg, date, narrative, srRef }) {
+  const div = `<div xmlns="http://www.w3.org/1999/xhtml">${escXhtml(narrative)}</div>`
   return {
     resourceType: 'Composition',
     meta: { profile: [PROFILE_COMP] },
+    contained: [{ ...authorOrg, id: 'org-author' }],
     status: 'final',
     type: { coding: [COMP_TYPE], text: COMP_TYPE.display },
-    subject: { reference: patientUrl },
+    subject: { reference: patientUrn },
     date,
-    author: [{ reference: authorUrl }],
+    author: [{ reference: '#org-author' }],
     title: 'Contrarreferencia',
-    // event.detail enlaza (semánticamente) la nota con la orden/interconsulta que responde.
-    ...(srRef ? { event: [{ detail: [{ reference: srRef }] }] } : {}),
+    // NOTA: el enlace al ServiceRequest NO va dentro del documento (rompe la autocontención del
+    // Bundle documento). Vive en DocumentReference.context.related (nivel MHD, consultable).
     section: [{
       title: SECTION_TITLE,
       code: { coding: [SECTION_CODE] },
-      text: { status: 'generated', div },
-      ...(srRef ? { entry: [{ reference: srRef }] } : {})
+      text: { status: 'generated', div }
     }]
   }
 }
@@ -241,40 +350,45 @@ function buildComposition({ patientUrl, authorUrl, date, narrative, srRef }) {
 // Ensambla la transacción MHD (LACBundleTransactionMHDIT) con el documento embebido.
 function buildMhdTransaction({ patient, narrative, date, srRef }) {
   const u = () => `urn:uuid:${randomUUID()}`
-  // Patient con fullUrl = Patient/{id} para consistencia de referencias dentro del documento.
-  const patientUrl = `Patient/${patient.id}`
-  const authorUrl = u(), compUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
+  // fullUrls ABSOLUTAS (urn:uuid) — requisito del bundle documento.
+  const patientUrn = u(), compUrn = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
 
   const authorOrg   = buildAuthorOrg()
-  const composition = buildComposition({ patientUrl, authorUrl, date, narrative, srRef })
+  const lacPatient  = sanitizePatientForLac(patient)
+  const composition = buildComposition({ patientUrn, authorOrg, date, narrative, srRef })
 
-  // Document Bundle (LACBundleDocIT) — autocontenido
+  // Document Bundle (LACBundleDocIT) — CERRADO: solo Composition (autor contenido) + Patient.
   const docBundle = {
     resourceType: 'Bundle', meta: { profile: [PROFILE_DOCBNDL] }, type: 'document',
     identifier: { system: MASTER_ID_SYSTEM, value: docBundleUrl }, timestamp: date,
     entry: [
-      { fullUrl: compUrl,    resource: composition },
-      { fullUrl: authorUrl,  resource: authorOrg },
-      { fullUrl: patientUrl, resource: patient }
+      { fullUrl: compUrn,    resource: composition },
+      { fullUrl: patientUrn, resource: lacPatient }
     ]
   }
 
-  // DocumentReference (LACDocReferenceIT) — type 11488-4 para que el origen lo consulte por type.
+  // DocumentReference (LACDocReferenceIT) — requiere author (1..*): Organización contenida.
   // context.related enlaza (a nivel MHD, consultable) la respuesta con el ServiceRequest de origen.
   const docRef = {
     resourceType: 'DocumentReference', meta: { profile: [PROFILE_DOCREF] },
+    contained: [{ ...authorOrg, id: 'org-author' }],
     masterIdentifier: { system: MASTER_ID_SYSTEM, value: docBundleUrl },
     status: 'current',
     type: { coding: [DOCREF_TYPE] },
     subject: { reference: `Patient/${patient.id}` },
     date,
+    author: [{ reference: '#org-author' }],
     ...(srRef ? { context: { related: [{ reference: srRef }] } } : {}),
     content: [{ attachment: { contentType: 'application/fhir+json', url: docBundleUrl } }]
   }
 
-  // List / SubmissionSet (LACList)
+  // List / SubmissionSet (LACList): meta.profile + code fijo 'submissionset' + extensión sourceId (1..1).
   const list = {
-    resourceType: 'List', status: 'current', mode: 'working', date,
+    resourceType: 'List', meta: { profile: [PROFILE_LIST] },
+    extension: [{ url: SOURCE_ID_EXT, valueIdentifier: { value: CR_SOURCE_ID } }],
+    status: 'current', mode: 'working',
+    code: { coding: [{ system: MHD_LIST_CODE_SYSTEM, code: 'submissionset' }] },
+    date,
     entry: [{ item: { reference: docRefUrl } }]
   }
 
@@ -348,9 +462,47 @@ app.post(['/forwardercontrarreferencia/_event', '/forwarderContrarreferencia/_ev
     await submitMhd(tx, orch)
 
     logStep('🎉 Done Contrarreferencia', uuid, '| SR:', srRef || '—')
-    sendOpenhim(res, { status: 'ok', uuid, mhd: true, serviceRequest: srRef || null }, orch)
+    sendOpenhim(res, { status: 'ok', uuid, mhd: true, serviceRequest: srRef || null }, orch, req.headers.origin)
   } catch (e) {
     logStep('❌ ERROR:', e.message)
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// Respuesta DIRECTA desde el dashboard (sin formulario de obs). Recibe la narrativa + el SR a
+// contestar y el paciente; arma el MHD (mismo builder) y lo POSTea al nodo nacional (ITI-65).
+// Body: { patientUuid?, identifier?, narrative, srRef? }
+app.post(['/forwardercontrarreferencia/_answer', '/forwarderContrarreferencia/_answer'], async (req, res) => {
+  logStep('📩 POST /_answer', { ...req.body, narrative: req.body?.narrative ? '(texto)' : undefined })
+  const { patientUuid, identifier, narrative, srRef } = req.body || {}
+  if (!narrative || !String(narrative).trim()) return res.status(400).json({ error: 'Missing narrative' })
+
+  const orch = []
+  try {
+    // 1) Patient: por uuid desde el proxy OpenMRS; si no, uno mínimo con el identifier.
+    let patient
+    if (patientUuid) {
+      try { patient = await getFromProxy(`/Patient/${patientUuid}`) } catch (e) { logStep('⚠️ Patient del proxy no disponible:', e.message) }
+    }
+    if (!patient || patient.resourceType !== 'Patient') {
+      patient = { resourceType: 'Patient', id: patientUuid || randomUUID(), ...(identifier ? { identifier: [{ value: identifier }] } : {}) }
+    }
+    await putPatientToNational(patient, orch)
+
+    // 2) SR a contestar: el que envía el dashboard (fila clickeada); si no viene, auto-resolver.
+    let resolvedSrRef = srRef
+    if (!resolvedSrRef) { const hit = await resolveServiceRequest(patient); resolvedSrRef = hit?.reference }
+
+    // 3) Documento MHD (ITI-65) → nodo nacional
+    if (!MHD_ENDPOINT) throw new Error('CR_MHD_ENDPOINT no configurado')
+    const tx = buildMhdTransaction({ patient, narrative: String(narrative).trim(), date: new Date().toISOString(), srRef: resolvedSrRef })
+    dumpBundle('contrarreferencia', patient.id, tx)
+    await submitMhd(tx, orch)
+
+    logStep('🎉 Done Contrarreferencia (_answer) | SR:', resolvedSrRef || '—')
+    sendOpenhim(res, { status: 'ok', patient: patient.id, serviceRequest: resolvedSrRef || null, mhd: true }, orch, req.headers.origin)
+  } catch (e) {
+    logStep('❌ ERROR (_answer):', e.message)
     res.status(500).json({ error: e.message })
   }
 })
