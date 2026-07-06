@@ -200,6 +200,35 @@ async function getFromProxy(path) {
   return resp.data
 }
 
+// Normaliza los identifier del Patient a la forma canónica LAC (idempotente: reconoce
+// tanto el shape crudo de OpenMRS como el ya normalizado, para que un PUT repetido no lo altere).
+function normalizePatientIdentifiers(patient) {
+  if (!Array.isArray(patient?.identifier)) return
+
+  const getOid = (envVar, defaultVal) => {
+    const val = process.env[envVar] || defaultVal
+    return val.startsWith('urn:oid.') ? val : (val.startsWith('urn:oid:') ? val.replace(':', '.') : `urn:oid.${val}`)
+  }
+  const natOid = getOid('LAC_NATIONAL_ID_SYSTEM_OID', '2.16.152')
+  const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152')
+
+  patient.identifier.forEach(id => {
+    const text = id.type?.text || ''
+    const code = id.type?.coding?.[0]?.code || ''
+    const isNational = text === 'Patient Identifier' || code === 'NI'
+    const isPassport = text === 'Pasaporte' || code === 'PPN'
+
+    if (isNational) {
+      id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'NI' }], text: 'Patient Identifier' }
+      id.system = natOid
+    } else if (isPassport) {
+      id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }] }
+      id.use = 'official'
+      id.system = ppnOid
+    }
+  })
+}
+
 // PUT best-effort del Patient al nodo nacional (para discoverabilidad por patient.identifier).
 async function putPatientToNational(patient, orch) {
   if (!REGISTER_PATIENT || !NATIONAL_FHIR_BASE) return
@@ -449,6 +478,7 @@ app.post(['/forwardercontrarreferencia/_event', '/forwarderContrarreferencia/_ev
 
     // 4) Patient
     const patient = await getFromProxy(`/Patient/${pid}`)
+    normalizePatientIdentifiers(patient)
     await putPatientToNational(patient, orch)
 
     // 5) Enlace de vuelta: ServiceRequest activo del paciente en el NN (best-effort)
@@ -487,6 +517,7 @@ app.post(['/forwardercontrarreferencia/_answer', '/forwarderContrarreferencia/_a
     if (!patient || patient.resourceType !== 'Patient') {
       patient = { resourceType: 'Patient', id: patientUuid || randomUUID(), ...(identifier ? { identifier: [{ value: identifier }] } : {}) }
     }
+    normalizePatientIdentifiers(patient)
     await putPatientToNational(patient, orch)
 
     // 2) SR a contestar: el que envía el dashboard (fila clickeada); si no viene, auto-resolver.

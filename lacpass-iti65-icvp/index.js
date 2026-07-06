@@ -1142,42 +1142,32 @@ function fixPatientIdentifiers(bundle) {
     const defaultNatOid = toUrnOid(DEFAULT_NAT_OID || '2.16.152'); // siempre URN OID con "."
     const defaultPpnOid = toUrnOid(DEFAULT_PPN_OID || '2.16.840.1.113883.4.330.152');
 
-    // Filtrar solo pasaportes
-    // Normalizar solo los identificadores que sean pasaporte, conservando el resto sin borrar nada
+    // Forma canónica idempotente: reconoce tanto el shape crudo de OpenMRS (type.text)
+    // como el ya normalizado (type.coding[0].code), para que reprocesar un Patient que ya
+    // viene normalizado (p. ej. leído de vuelta del nodo FHIR) no le cambie el identifier.
     for (const id of patient.identifier) {
         const txt = (id?.type?.text || '').toLowerCase();
-        const isPassportByText = /pasaporte|passport/.test(txt);
-        const isPassportByCode = (id?.type?.coding || []).some(c =>
-            String(c?.code || '').toUpperCase() === 'PPN' ||
-            String(c?.code || '') === 'a2551e57-6028-428b-be3c-21816c252e06'
+        const cod = id?.type?.coding?.[0]?.code || '';
+
+        const isNational = txt === 'patient identifier' || cod === 'NI';
+        const isPassport = !isNational && (
+            /pasaporte|passport/.test(txt) ||
+            cod.toUpperCase() === 'PPN' ||
+            cod === 'a2551e57-6028-428b-be3c-21816c252e06' // código que nos envías para distinguir PPN
         );
-        
-        // Si es pasaporte, lo normaliza. Si no lo es, lo ignora y lo deja intacto.
-        if (isPassportByText || isPassportByCode) {
-            id.system = id.system || defaultPpnOid;
+
+        if (isNational) {
+            id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'NI' }], text: 'Patient Identifier' };
+            id.system = defaultNatOid;
+            continue;
+        }
+
+        if (isPassport) {
+            id.system = defaultPpnOid;
             id.use = 'official';
-            id.type = id.type || {};
-            id.type.coding = [{
-                system: 'http://terminology.hl7.org/CodeSystem/v2-0203',
-                code: 'PPN'
-            }];
-            if (id.type.text) delete id.type.text;
+            id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }] };
         }
     }
-
-    /*// Asegurar que exista al menos un national id si no vino (slice requerido)
-    const hasNational = patient.identifier.some(id =>
-        String(id.system||'') === defaultNatOid ||
-        (id.type?.coding||[]).some(c => c.system === 'http://lacpass.racsel.org/CodeSystem/national-identifier-types' && c.code === 'RUN')
-    );
-    if (!hasNational) {
-        patient.identifier.unshift({
-            use: 'usual',
-            system: defaultNatOid,                     // urn:oid.2.16.152
-            type: { coding: [{ system: 'http://lacpass.racsel.org/CodeSystem/national-identifier-types', code: 'RUN' }] },
-            value: patient.identifier?.[0]?.value || `RUN*${patient.id || 'UNKNOWN'}`
-        });
-    }*/
 }
 /**
  * Asegura que una propiedad sea un array

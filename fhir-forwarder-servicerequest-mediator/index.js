@@ -197,6 +197,35 @@ async function putToNational(resource, orch) {
   catch (e) { logStep('⚠️ No se pudo registrar en el NN', resource.resourceType, resource.id, ':', e.message) }
 }
 
+// Normaliza los identifier del Patient a la forma canónica LAC (idempotente: reconoce
+// tanto el shape crudo de OpenMRS como el ya normalizado, para que un PUT repetido no lo altere).
+function normalizePatientIdentifiers(patient) {
+  if (!Array.isArray(patient?.identifier)) return
+
+  const getOid = (envVar, defaultVal) => {
+    const val = process.env[envVar] || defaultVal
+    return val.startsWith('urn:oid.') ? val : (val.startsWith('urn:oid:') ? val.replace(':', '.') : `urn:oid.${val}`)
+  }
+  const natOid = getOid('LAC_NATIONAL_ID_SYSTEM_OID', '2.16.152')
+  const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152')
+
+  patient.identifier.forEach(id => {
+    const text = id.type?.text || ''
+    const code = id.type?.coding?.[0]?.code || ''
+    const isNational = text === 'Patient Identifier' || code === 'NI'
+    const isPassport = text === 'Pasaporte' || code === 'PPN'
+
+    if (isNational) {
+      id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'NI' }], text: 'Patient Identifier' }
+      id.system = natOid
+    } else if (isPassport) {
+      id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }] }
+      id.use = 'official'
+      id.system = ppnOid
+    }
+  })
+}
+
 // ============================================================================
 // Helpers de extracción de observaciones
 // ============================================================================
@@ -479,6 +508,7 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
 
     // 3) Patient (para identificador nacional + subir referencia) — local y NN
     const patient = await getFromProxy(`/Patient/${pid}`)
+    normalizePatientIdentifiers(patient)
     await putToNode(patient, orch); sent++
     await putToNational(patient, orch) // para que el SR suelto resuelva su subject en el NN
 

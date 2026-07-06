@@ -153,6 +153,35 @@ async function putToNode(resource, orch) {
   return r.status
 }
 
+// Normaliza los identifier del Patient a la forma canónica LAC (idempotente: reconoce
+// tanto el shape crudo de OpenMRS como el ya normalizado, para que un PUT repetido no lo altere).
+function normalizePatientIdentifiers(patient) {
+  if (!Array.isArray(patient?.identifier)) return
+
+  const getOid = (envVar, defaultVal) => {
+    const val = process.env[envVar] || defaultVal
+    return val.startsWith('urn:oid.') ? val : (val.startsWith('urn:oid:') ? val.replace(':', '.') : `urn:oid.${val}`)
+  }
+  const natOid = getOid('LAC_NATIONAL_ID_SYSTEM_OID', '2.16.152')
+  const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152')
+
+  patient.identifier.forEach(id => {
+    const text = id.type?.text || ''
+    const code = id.type?.coding?.[0]?.code || ''
+    const isNational = text === 'Patient Identifier' || code === 'NI'
+    const isPassport = text === 'Pasaporte' || code === 'PPN'
+
+    if (isNational) {
+      id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'NI' }], text: 'Patient Identifier' }
+      id.system = natOid
+    } else if (isPassport) {
+      id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }] }
+      id.use = 'official'
+      id.system = ppnOid
+    }
+  })
+}
+
 // ============================================================================
 // Helpers de extracción de observaciones
 // ============================================================================
@@ -351,6 +380,7 @@ app.post(['/forwardermedicationstatement/_event', '/forwarderMedicationStatement
 
     // 3) Patient (subir referencia)
     const patient = await getFromProxy(`/Patient/${pid}`)
+    normalizePatientIdentifiers(patient)
     await putToNode(patient, orch); sent++
 
     // 4) Un MedicationStatement por unidad/grupo (cada uno con su Dosis/Vía pareadas)

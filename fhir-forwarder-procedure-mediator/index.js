@@ -164,6 +164,35 @@ async function putToNode(resource) {
   }
 }
 
+// Normaliza los identifier del Patient a la forma canónica LAC (idempotente: reconoce
+// tanto el shape crudo de OpenMRS como el ya normalizado, para que un PUT repetido no lo altere).
+function normalizePatientIdentifiers(patient) {
+  if (!Array.isArray(patient?.identifier)) return
+
+  const getOid = (envVar, defaultVal) => {
+    const val = process.env[envVar] || defaultVal
+    return val.startsWith('urn:oid.') ? val : (val.startsWith('urn:oid:') ? val.replace(':', '.') : `urn:oid.${val}`)
+  }
+  const natOid = getOid('LAC_NATIONAL_ID_SYSTEM_OID', '2.16.152')
+  const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152')
+
+  patient.identifier.forEach(id => {
+    const text = id.type?.text || ''
+    const code = id.type?.coding?.[0]?.code || ''
+    const isNational = text === 'Patient Identifier' || code === 'NI'
+    const isPassport = text === 'Pasaporte' || code === 'PPN'
+
+    if (isNational) {
+      id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'NI' }], text: 'Patient Identifier' }
+      id.system = natOid
+    } else if (isPassport) {
+      id.type = { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }] }
+      id.use = 'official'
+      id.system = ppnOid
+    }
+  })
+}
+
 // --- caches de subida para evitar duplicados ---
 const uploadedLocations     = new Set()
 const uploadedEncounters    = new Set()
@@ -383,29 +412,7 @@ app.post(['/forwarderProcedure/_event', '/forwarderprocedure/_event'], async (re
     const [, patientId ] = enc.subject.reference.split('/')
     logStep('📤 Subiendo Patient…', patientId)
     const patient = await getFromProxy(`/Patient/${patientId}`)
-    if (Array.isArray(patient.identifier)) {
-        // Helper para extraer OIDs del .env o usar los valores por defecto
-        const getOid = (envVar, defaultVal) => {
-          const val = process.env[envVar] || defaultVal;
-          return val.startsWith('urn:oid.') ? val : (val.startsWith('urn:oid:') ? val.replace(':', '.') : `urn:oid.${val}`);
-        };
-        const natOid = getOid('LAC_NATIONAL_ID_SYSTEM_OID', '2.16.152');
-        const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152');
-
-        patient.identifier.forEach(id => {
-          const text = id.type?.text || '';
-          if (text === 'Patient Identifier') {
-            id.type = id.type || {};
-            id.type.coding = [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'NNCHL' }];
-            id.system = natOid;
-          } else if (text === 'Pasaporte') {
-            id.type = id.type || {};
-            id.type.coding = [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }];
-            id.use = 'official';
-            id.system = ppnOid;
-          }
-        });
-      }
+    normalizePatientIdentifiers(patient)
     await putToNode(patient)
     sent++
 
