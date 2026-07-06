@@ -572,6 +572,32 @@ function safeWriteDebugJson(prefix, data) {
   }
 }
 
+// ===================== OpenHIM Orchestrations =====================
+// Registro de orquestación para que OpenHIM muestre cada llamada saliente en la transacción
+function mkOrch(name, method, url, reqBody, resp) {
+  const safe = (v) => { try { return typeof v === 'string' ? v : JSON.stringify(v); } catch { return ''; } };
+  return {
+    name,
+    request: { method, path: url, body: safe(reqBody), timestamp: new Date().toISOString() },
+    response: { status: resp?.status || 0, body: safe(resp?.data), timestamp: new Date().toISOString() }
+  };
+}
+
+function sendOpenhim(res, summary, orchestrations, status = 200) {
+  res.set('Content-Type', 'application/json+openhim');
+  res.send(JSON.stringify({
+    'x-mediator-urn': mediatorConfig.urn,
+    status: status >= 400 ? 'Failed' : 'Successful',
+    response: {
+      status,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(summary),
+      timestamp: new Date().toISOString()
+    },
+    orchestrations: orchestrations || []
+  }));
+}
+
 // ===================== OpenHIM =====================
 console.log(`Starting LACPASS→ITI-65 Mediator...`);
 if (NODE_ENV === 'development') {
@@ -2384,6 +2410,7 @@ app.get(['/lacpass/health', '/lacpass/_health'], (req, res) =>
 // ===================== ROUTE ITI-65 - VERSIÓN INTEGRADA =====================
 app.post('/lacpass/_iti65', async (req, res) => {
   let summaryBundle;
+  const orch = []; // orquestaciones para el log de OpenHIM
 
   // 1) Obtener $summary si viene uuid; si no, usar el Bundle entregado
   if (req.body.uuid) {
@@ -2813,6 +2840,7 @@ app.post('/lacpass/_iti65', async (req, res) => {
       },
       validateStatus: false
     });
+    orch.push(mkOrch('ITI-65 ProvideBundle → Hapi FHIR Nodo Nacional', 'POST', FHIR_NODO_NACIONAL_SERVER, provideBundle, resp));
     console.log(`[${req.correlationId}] ⇒ ITI-65 sent, status ${resp.status}`);
     if (resp.status >= 400) {
       const ooFile = safeWriteDebugJson('operationOutcome', resp.data);
@@ -2824,11 +2852,11 @@ app.post('/lacpass/_iti65', async (req, res) => {
       // ← aquí, y SOLO aquí, crear el recurso "no-allergy-info" si tu flujo lo requiere
     }
 
-    return res.json({ status: 'sent', code: resp.status });
+    return sendOpenhim(res, { status: 'sent', code: resp.status }, orch, resp.status < 400 ? 200 : resp.status);
 
   } catch (e) {
     console.error('❌ ERROR ITI-65 Mediator:', e);
-    return res.status(500).json({ error: e.message });
+    return sendOpenhim(res, { error: e.message }, orch, 500);
   }
 });
 
