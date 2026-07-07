@@ -178,6 +178,8 @@ const CR_SOURCE_ID  = process.env.CR_SOURCE_ID || 'urn:oid:2.16.152' // OID nodo
 
 // Resolución del ServiceRequest (enlace de vuelta). Identificadores del paciente en orden: RUN/RUT, Pasaporte.
 const SR_STATUS_FILTER      = process.env.CR_SR_STATUS_FILTER    || 'active'
+// Status al que se transiciona el ServiceRequest original al llegar su respuesta (PUT best-effort).
+const SR_TARGET_STATUS      = process.env.CR_SR_TARGET_STATUS    || 'completed'
 const NATIONAL_ID_TYPE_TEXT = process.env.CR_NATIONAL_ID_TYPE_TEXT || 'Patient Identifier'
 const PASSPORT_ID_TYPE_TEXT = process.env.CR_PASSPORT_ID_TYPE_TEXT || 'Pasaporte'
 // Registrar (best-effort) el Patient en el NN para que la búsqueda por patient.identifier resuelva el documento.
@@ -285,7 +287,38 @@ async function queryActiveServiceRequest(identifier) {
   if (r.status >= 400) { logStep('⚠️ SR status', r.status, 'para', identifier); return undefined }
   const sr = (r.data?.entry || [])[0]?.resource
   if (!sr || sr.resourceType !== 'ServiceRequest') return undefined
-  return { reference: `ServiceRequest/${sr.id}`, id: sr.id, identifier: sr.identifier }
+  return { reference: `ServiceRequest/${sr.id}`, id: sr.id, identifier: sr.identifier, resource: sr }
+}
+
+// GET de un ServiceRequest por id (usado en /_answer cuando el dashboard ya envía el srRef directo,
+// sin haber pasado por resolveServiceRequest, y por lo tanto sin el recurso completo).
+async function fetchServiceRequest(id) {
+  const url = `${NATIONAL_FHIR_BASE}/ServiceRequest/${id}`
+  const r = await axios.get(url, {
+    headers: { Accept: 'application/fhir+json' },
+    validateStatus: false, timeout: 15000, httpsAgent: axios.defaults.httpsAgent || devAgent
+  })
+  if (r.status >= 400) return undefined
+  return r.data
+}
+
+// PUT best-effort: al llegar la contrarreferencia (respuesta), cierra el ServiceRequest original
+// (status -> SR_TARGET_STATUS). Antes solo se enlazaba (context.related) pero nunca se actualizaba,
+// por lo que quedaba 'active' para siempre.
+async function updateServiceRequestStatus(sr, status, orch) {
+  if (!sr?.id) return
+  const url = `${NATIONAL_FHIR_BASE}/ServiceRequest/${sr.id}`
+  const body = { ...sr, status }
+  try {
+    logStep('PUT (SR status)', url, '->', status)
+    const r = await axios.put(url, body, {
+      headers: { 'Content-Type': 'application/fhir+json' },
+      validateStatus: false, httpsAgent: axios.defaults.httpsAgent || devAgent
+    })
+    if (orch) orch.push(mkOrch(`PUT ServiceRequest/${sr.id} (status=${status})`, 'PUT', url, body, r))
+    if (r.status >= 400) logStep('⚠️ No se pudo actualizar status del SR:', r.status)
+    else logStep('✅ SR status actualizado', sr.id, '->', status)
+  } catch (e) { logStep('⚠️ Error actualizando status del SR:', e.message) }
 }
 // Prueba cada identificador del paciente hasta encontrar un ServiceRequest activo.
 async function resolveServiceRequest(patient) {
@@ -485,6 +518,8 @@ app.post(['/forwardercontrarreferencia/_event', '/forwarderContrarreferencia/_ev
     // 5) Enlace de vuelta: ServiceRequest activo del paciente en el NN (best-effort)
     const srHit = await resolveServiceRequest(patient)
     const srRef = srHit?.reference
+    // Cierra el ServiceRequest original (PUT, best-effort): ya llegó su respuesta.
+    if (srHit?.resource) await updateServiceRequestStatus(srHit.resource, SR_TARGET_STATUS, orch)
 
     // 6) Documento MHD "Contrarreferencia" (ITI-65) → nodo nacional
     if (!MHD_ENDPOINT) throw new Error('CR_MHD_ENDPOINT no configurado')
@@ -523,7 +558,16 @@ app.post(['/forwardercontrarreferencia/_answer', '/forwarderContrarreferencia/_a
 
     // 2) SR a contestar: el que envía el dashboard (fila clickeada); si no viene, auto-resolver.
     let resolvedSrRef = srRef
-    if (!resolvedSrRef) { const hit = await resolveServiceRequest(patient); resolvedSrRef = hit?.reference }
+    let resolvedSrResource
+    if (resolvedSrRef) {
+      resolvedSrResource = await fetchServiceRequest(resolvedSrRef.split('/').pop())
+    } else {
+      const hit = await resolveServiceRequest(patient)
+      resolvedSrRef = hit?.reference
+      resolvedSrResource = hit?.resource
+    }
+    // Cierra el ServiceRequest original (PUT, best-effort): ya llegó su respuesta.
+    if (resolvedSrResource) await updateServiceRequestStatus(resolvedSrResource, SR_TARGET_STATUS, orch)
 
     // 3) Documento MHD (ITI-65) → nodo nacional
     if (!MHD_ENDPOINT) throw new Error('CR_MHD_ENDPOINT no configurado')

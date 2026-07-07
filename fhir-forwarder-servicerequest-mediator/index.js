@@ -197,6 +197,57 @@ async function putToNational(resource, orch) {
   catch (e) { logStep('⚠️ No se pudo registrar en el NN', resource.resourceType, resource.id, ':', e.message) }
 }
 
+// Busca un ServiceRequest existente por su identifier de negocio (SR_ID_SYSTEM|value), no por el id
+// interno del servidor (que en creación aún no se conoce).
+async function findServiceRequestByIdentifier(srId, base) {
+  const idParam = `${encodeURIComponent(SR_ID_SYSTEM)}%7C${encodeURIComponent(srId)}`
+  const url = `${base}/fhir/ServiceRequest?identifier=${idParam}&_count=1`
+  logStep('GET (node, buscar SR existente)', url)
+  const r = await axios.get(url, {
+    headers: { Accept: 'application/fhir+json' },
+    validateStatus: false, httpsAgent: axios.defaults.httpsAgent || devAgent
+  })
+  if (r.status >= 400) return undefined
+  return (r.data?.entry || [])[0]?.resource
+}
+
+// Crea (POST) el ServiceRequest si no existe todavía un recurso con ese identifier de negocio en el
+// destino; si ya existe, lo actualiza (PUT) — así una reejecución del evento (ej. edición del form)
+// actualiza el estado del recurso existente en lugar de intentar recrearlo. Muta sr.id con el id real
+// del servidor para que las referencias/orquestaciones posteriores usen el id correcto.
+async function upsertServiceRequest(sr, orch, base = RESOURCE_BASE) {
+  const srId = sr.identifier?.[0]?.value || sr.id
+  const existing = await findServiceRequestByIdentifier(srId, base).catch(() => undefined)
+
+  if (existing?.id) {
+    sr.id = existing.id
+    return putToNode(sr, orch, base)
+  }
+
+  const { id, ...createBody } = sr // POST: el id lo asigna el servidor
+  const url = `${base}/fhir/ServiceRequest`
+  logStep('POST (node)', url)
+  const r = await axios.post(url, createBody, {
+    headers: { 'Content-Type': 'application/fhir+json' },
+    validateStatus: false, httpsAgent: axios.defaults.httpsAgent || devAgent
+  })
+  if (orch) orch.push(mkOrch('POST ServiceRequest', 'POST', url, createBody, r))
+  if (r.status >= 400) {
+    logStep('❌ POST failed payload:', JSON.stringify(r.data, null, 2))
+    throw new Error(`POST failed ${r.status}`)
+  }
+  sr.id = r.data?.id || sr.id
+  logStep('✅ POST OK', 'ServiceRequest', sr.id, r.status)
+  return r.status
+}
+
+// Igual que upsertServiceRequest pero best-effort contra el Nodo Nacional (no rompe el flujo).
+async function upsertServiceRequestNational(sr, orch) {
+  if (!NATIONAL_RESOURCE_BASE) return
+  try { await upsertServiceRequest(sr, orch, NATIONAL_RESOURCE_BASE) }
+  catch (e) { logStep('⚠️ No se pudo registrar SR en el NN', sr.id, ':', e.message) }
+}
+
 // Normaliza los identifier del Patient a la forma canónica LAC (idempotente: reconoce
 // tanto el shape crudo de OpenMRS como el ya normalizado, para que un PUT repetido no lo altere).
 function normalizePatientIdentifiers(patient) {
@@ -532,8 +583,8 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     const srResources = []
     for (const u of units) {
       const sr = buildServiceRequest({ id: u.id, encId: uuid, patientRef, authoredOn, byConcept: u.byConcept, ipsRef, originOrgName })
-      await putToNode(sr, orch); sent++; srResources.push(sr)
-      await putToNational(sr, orch) // SR suelto también en el NN (Track 1.2: consultable/completable ahí)
+      await upsertServiceRequest(sr, orch); sent++; srResources.push(sr)
+      await upsertServiceRequestNational(sr, orch) // SR suelto también en el NN (Track 1.2: consultable/completable ahí)
     }
 
     // 8) Documento MHD "Interconsulta Transfronteriza" (Fase 2) con todos los ServiceRequest
