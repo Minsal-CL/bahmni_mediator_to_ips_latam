@@ -1146,6 +1146,7 @@ function fixPatientIdentifiers(bundle) {
     // como el ya normalizado (type.coding[0].code), para que reprocesar un Patient que ya
     // viene normalizado (p. ej. leído de vuelta del nodo FHIR) no le cambie el identifier.
     for (const id of patient.identifier) {
+        delete id.extension;
         const txt = (id?.type?.text || '').toLowerCase();
         const cod = id?.type?.coding?.[0]?.code || '';
 

@@ -125,6 +125,7 @@ function normalizePatientIdentifiers(patient) {
   const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152')
 
   patient.identifier.forEach(id => {
+    delete id.extension
     const text = id.type?.text || ''
     const code = id.type?.coding?.[0]?.code || ''
     const isNational = text === 'Patient Identifier' || code === 'NI'
