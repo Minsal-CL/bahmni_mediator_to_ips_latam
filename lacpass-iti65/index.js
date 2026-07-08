@@ -159,7 +159,7 @@ function summarizeIdentifiers(ids=[]) {
 const {
   FULLURL_MODE_PROVIDE = 'urn',
   FULLURL_MODE_DOCUMENT = 'absolute',
-  ABSOLUTE_FULLURL_BASE,
+  ABSOLUTE_FULLURL_BASE = 'http://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir',
   BINARY_DELIVERY_MODE = 'both',
   ATTACHMENT_URL_MODE = 'absolute',
 } = process.env;
@@ -329,6 +329,8 @@ function applyUrlModeToBundle(bundle, mode, updateReferencesInObject) {
 
     // asignar fullUrl final según el modo
     e.fullUrl = finalRef;
+    // el id del recurso debe ser coherente con el uuid usado en el fullUrl
+    r.id = id;
   }
 
   // Reescribir todas las .reference y Attachment.url según urlMap
