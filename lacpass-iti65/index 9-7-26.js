@@ -132,9 +132,6 @@ const {
 
 // ====== NUEVO: separador configurable para URN OID (por defecto ".")
 const OID_URN_SEPARATOR = process.env.OID_URN_SEPARATOR || '.';
-// sourceId del SubmissionSet (MHD): OID del nodo con DOS PUNTOS (urn:oid:) — requisito IHE MHD
-// (mhd-startswithoid). Es OTRO campo distinto del identifier del Paciente (que va con punto).
-const MHD_SOURCE_ID = process.env.MHD_SOURCE_ID || 'urn:oid:2.16.152';
 
 // ============== Utils de log PDQm ==============
 function pdqmShouldLog(level='info') {
@@ -2663,16 +2660,14 @@ app.post('/lacpass/_iti65', async (req, res) => {
         div: `<div xmlns="http://www.w3.org/1999/xhtml">SubmissionSet para el paciente ${patientEntry.resource.id}</div>`
       },
       meta: {
-        profile: ['http://racsel.org/StructureDefinition/LACList'],
+        profile: ['https://profiles.ihe.net/ITI/MHD/StructureDefinition/IHE.MHD.Minimal.SubmissionSet'],
         security: [{ system: 'http://terminology.hl7.org/CodeSystem/v3-ActReason', code: 'HTEST' }]
       },
       extension: [{
         url: 'https://profiles.ihe.net/ITI/MHD/StructureDefinition/ihe-sourceId',
-        valueIdentifier: { value: MHD_SOURCE_ID }
+        valueIdentifier: { value: buildRef(FULLURL_MODE_DOCUMENT, 'Bundle', originalBundleId) }
       }],
-      // use:'official' => slice entryUUID (acepta urn:uuid). Con use:'usual' caería en el slice
-      // uniqueId, que exige urn:oid: (mhd-startswithoid) y hacía fallar la validación LACList.
-      identifier: [{ use: 'official', system: 'urn:ietf:rfc:3986', value: `urn:uuid:${ssId}` }],
+      identifier: [{ use: 'usual', system: 'urn:ietf:rfc:3986', value: `urn:uuid:${ssId}` }],
       status: 'current',
       mode: 'working',
       code: { coding: [{ system: 'https://profiles.ihe.net/ITI/MHD/CodeSystem/MHDlistTypes', code: 'submissionset' }] },
@@ -2720,7 +2715,7 @@ app.post('/lacpass/_iti65', async (req, res) => {
       resourceType: 'DocumentReference',
       id: drId,
       meta: {
-        profile: ['http://racsel.org/StructureDefinition/LACDocReference'],
+        profile: ['https://profiles.ihe.net/ITI/MHD/StructureDefinition/IHE.MHD.Minimal.DocumentReference'],
         security: [{ system: 'http://terminology.hl7.org/CodeSystem/v3-ActReason', code: 'HTEST' }]
       },
       text: {
