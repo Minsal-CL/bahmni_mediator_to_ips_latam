@@ -153,11 +153,9 @@ const PROFILE_ORG_LAC = process.env.CR_ORG_PROFILE_URL     || 'http://racsel.org
 const DOCREF_TYPE   = { system: 'http://loinc.org', code: '57133-1', display: 'Referral note' }
 // LACCompositionIT FIJA el display en 'Consultation note' (pattern MANDATORY). El validador de
 // terminología prefiere 'Consult note' pero eso es solo RECOMMENDED: manda el pattern fijo del perfil.
-// LACCompositionIT fija por patrón: type.display='Consult note' (LOINC oficial de 11488-4) y
-// section.title='Evaluation Result'. El texto clínico en español va en section.text.div, no en el title.
-const COMP_TYPE     = { system: 'http://loinc.org', code: '11488-4', display: 'Consult note' }
+const COMP_TYPE     = { system: 'http://loinc.org', code: '11488-4', display: 'Consultation note' }
 const SECTION_CODE  = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
-const SECTION_TITLE = 'Evaluation Result'
+const SECTION_TITLE = 'Resultado de la Evaluación'
 const MASTER_ID_SYSTEM   = process.env.CR_MASTER_ID_SYSTEM   || 'urn:ietf:rfc:3986'
 // Organización DESTINO (autor de la contrarreferencia = el especialista que responde). En dev = CL.
 const AUTHOR_ORG_NAME    = process.env.CR_AUTHOR_ORG_NAME    || 'Hospital Clínico San Borja Arriarán'

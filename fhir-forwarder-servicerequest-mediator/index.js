@@ -141,10 +141,9 @@ const PROFILE_COMP    = process.env.SR_COMPOSITION_PROFILE || 'http://racsel.org
 const PROFILE_DOCBNDL = process.env.SR_DOCBUNDLE_PROFILE   || 'http://racsel.org/StructureDefinition/LACBundleDocIT'
 const PROFILE_DOCREF  = process.env.SR_DOCREF_PROFILE      || 'http://racsel.org/StructureDefinition/LACDocReferenceIT'
 const PROFILE_TXBNDL  = process.env.SR_TXBUNDLE_PROFILE    || 'http://racsel.org/StructureDefinition/LACBundleTransactionMHDIT'
-// LACCompositionIT fija por patrón: type.display='Consult note' y section.title='Evaluation Result'.
-const COMP_TYPE    = { system: 'http://loinc.org', code: '11488-4', display: 'Consult note' }
+const COMP_TYPE    = { system: 'http://loinc.org', code: '11488-4', display: 'Consultation note' }
 const SECTION_CODE = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
-const SECTION_TITLE = 'Evaluation Result'
+const SECTION_TITLE = 'Resultado de la Evaluación'
 const MASTER_ID_SYSTEM = process.env.SR_MASTER_ID_SYSTEM || 'urn:ietf:rfc:3986'
 
 // IPS (ITI-67) — mismo origen que el dashboard "IPS LAC" (ipsConfig.js)
