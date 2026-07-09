@@ -171,7 +171,7 @@ const DEFAULT_PPN_OID = toUrnOid(LAC_PASSPORT_ID_SYSTEM_OID || '2.16.840.1.11388
 
 // Perfiles LAC (racsel) — coinciden con el validador
 const LAC_PROFILES = {
-  BUNDLE: 'http://racsel.org/StructureDefinition/LACBundleIPS"',
+  BUNDLE: 'http://racsel.org/StructureDefinition/LACBundleIPS',
   COMPOSITION: 'http://racsel.org/StructureDefinition/LACCompositionIPS',
   PATIENT: 'http://racsel.org/StructureDefinition/LACPatient'
 };
