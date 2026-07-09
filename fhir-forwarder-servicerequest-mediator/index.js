@@ -120,6 +120,8 @@ const SR_ID_SYSTEM = process.env.SR_IDENTIFIER_SYSTEM || 'http://minsal.cl/sid/s
 // Organización de ORIGEN (requester) — el establecimiento solicitante chileno
 const ORIGIN_ORG_NAME    = process.env.SR_ORIGIN_ORG_NAME    || 'Hospital Clínico San Borja Arriarán'
 const ORIGIN_ORG_COUNTRY = process.env.SR_ORIGIN_ORG_COUNTRY || 'CL' // ISO 3166-1 alpha-2
+// Sistema del identifier de país en requester/performer (referencia lógica LACOrganization)
+const ISO_3166_SYSTEM = process.env.SR_COUNTRY_ID_SYSTEM || 'urn:iso:std:iso:3166'
 
 // ── Documento MHD "Interconsulta Transfronteriza" ──
 // IMPORTANTE (IG RACSEL, verificado): la INTERCONSULTA (ida) viaja SOLO como ServiceRequest suelto
@@ -392,18 +394,18 @@ function buildServiceRequest({ id, encId, patientRef, authoredOn, byConcept, ips
   const note        = obsValueString(byConcept[CONCEPT.CLINICAL_HISTORY])
   const destName    = obsValueString(byConcept[CONCEPT.ORG_DEST])
   const country     = obsCountry(byConcept[CONCEPT.COUNTRY_DEST])
-  const destCountry = country?.iso2 || country?.display // address.country debe ser ISO 3166-1 alpha-2
+  const destCountry = country?.iso2 || country?.display // ISO 3166-1 alpha-2
 
-  // LACOrganization contenidas (address.country obligatorio en el perfil)
-  const originOrg = {
-    resourceType: 'Organization', id: 'org-origin', meta: { profile: [PROFILE_ORG] },
-    name: originOrgName || ORIGIN_ORG_NAME,
-    address: [{ country: ORIGIN_ORG_COUNTRY }]
+  // requester (ORIGEN) y performer (DESTINO) = Reference(LACOrganization) NO contenidas.
+  // El IG (ejemplo Track 1.2) usa referencias LÓGICAS: { identifier, display }, sin contained ni
+  // address.country dentro del SR. El país viaja en identifier (ISO 3166-1) + el nombre en display.
+  const requester = {
+    identifier: { system: ISO_3166_SYSTEM, value: ORIGIN_ORG_COUNTRY },
+    display: originOrgName || ORIGIN_ORG_NAME
   }
-  const destOrg = {
-    resourceType: 'Organization', id: 'org-dest', meta: { profile: [PROFILE_ORG] },
-    name: destName || 'Organización de destino',
-    ...(destCountry ? { address: [{ country: destCountry }] } : {})
+  const performer = {
+    identifier: { system: ISO_3166_SYSTEM, value: destCountry || 'XX' },
+    display: destName || country?.display || 'Organización de destino'
   }
 
   if (!ipsRef) logStep('⚠️ Sin IPS: el perfil LACServiceRequestIT exige supportingInfo (1..1)')
@@ -422,12 +424,11 @@ function buildServiceRequest({ id, encId, patientRef, authoredOn, byConcept, ips
     // hapilocal) y el nodo nacional, con integridad referencial, rechazaba el SR (HAPI-1094).
     // Además LACServiceRequestIT no requiere encounter.
     ...(authoredOn ? { authoredOn } : {}),
-    requester: { reference: '#org-origin', display: originOrg.name },
-    performer: [{ reference: '#org-dest', display: destOrg.name }],
+    requester,
+    performer: [performer],
     ...(reason ? { reasonCode: [{ text: reason }] } : {}),
     ...(note ? { note: [{ text: note }] } : {}),
-    ...(ipsRef ? { supportingInfo: [ipsRef] } : {}),
-    contained: [originOrg, destOrg]
+    ...(ipsRef ? { supportingInfo: [ipsRef] } : {})
   }
   return sr
 }

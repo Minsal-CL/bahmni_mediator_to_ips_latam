@@ -411,7 +411,8 @@ function buildComposition({ patientUrn, authorOrg, date, narrative, srRef }) {
 }
 
 // Ensambla la transacción MHD (LACBundleTransactionMHDIT) con el documento embebido.
-function buildMhdTransaction({ patient, narrative, date, srRef }) {
+// srIdentifier = { system, value } del IDOrden del ServiceRequest de origen (enlace canónico).
+function buildMhdTransaction({ patient, narrative, date, srRef, srIdentifier }) {
   const u = () => `urn:uuid:${randomUUID()}`
   // fullUrls ABSOLUTAS (urn:uuid) — requisito del bundle documento.
   const patientUrn = u(), compUrn = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
@@ -431,7 +432,12 @@ function buildMhdTransaction({ patient, narrative, date, srRef }) {
   }
 
   // DocumentReference (LACDocReferenceIT) — requiere author (1..*): Organización contenida.
-  // context.related enlaza (a nivel MHD, consultable) la respuesta con el ServiceRequest de origen.
+  // context.related enlaza la respuesta con la interconsulta de origen. El IG (Bundle ITI-65 de
+  // Track 1.2) lo hace POR IDENTIFIER = IDOrden (mismo valor que ServiceRequest.identifier), que es
+  // portable entre nodos. Si solo tenemos la URL (srRef), caemos a reference como último recurso.
+  const related = srIdentifier?.value
+    ? [{ identifier: srIdentifier, display: 'Solicitud original de interconsulta' }]
+    : (srRef ? [{ reference: srRef }] : null)
   const docRef = {
     resourceType: 'DocumentReference', meta: { profile: [PROFILE_DOCREF] },
     contained: [{ ...authorOrg, id: 'org-author' }],
@@ -441,7 +447,7 @@ function buildMhdTransaction({ patient, narrative, date, srRef }) {
     subject: { reference: `Patient/${patient.id}` },
     date,
     author: [{ reference: '#org-author' }],
-    ...(srRef ? { context: { related: [{ reference: srRef }] } } : {}),
+    ...(related ? { context: { related } } : {}),
     content: [{ attachment: { contentType: 'application/fhir+json', url: docBundleUrl } }]
   }
 
@@ -518,12 +524,13 @@ app.post(['/forwardercontrarreferencia/_event', '/forwarderContrarreferencia/_ev
     // 5) Enlace de vuelta: ServiceRequest activo del paciente en el NN (best-effort)
     const srHit = await resolveServiceRequest(patient)
     const srRef = srHit?.reference
+    const srIdentifier = srHit?.identifier?.[0] // IDOrden para context.related (por identifier)
     // Cierra el ServiceRequest original (PUT, best-effort): ya llegó su respuesta.
     if (srHit?.resource) await updateServiceRequestStatus(srHit.resource, SR_TARGET_STATUS, orch)
 
     // 6) Documento MHD "Contrarreferencia" (ITI-65) → nodo nacional
     if (!MHD_ENDPOINT) throw new Error('CR_MHD_ENDPOINT no configurado')
-    const tx = buildMhdTransaction({ patient, narrative, date: effective || new Date().toISOString(), srRef })
+    const tx = buildMhdTransaction({ patient, narrative, date: effective || new Date().toISOString(), srRef, srIdentifier })
     dumpBundle('contrarreferencia', uuid, tx) // copia en carpeta (evidencia)
     await submitMhd(tx, orch)
 
@@ -540,7 +547,7 @@ app.post(['/forwardercontrarreferencia/_event', '/forwarderContrarreferencia/_ev
 // Body: { patientUuid?, identifier?, narrative, srRef? }
 app.post(['/forwardercontrarreferencia/_answer', '/forwarderContrarreferencia/_answer'], async (req, res) => {
   logStep('📩 POST /_answer', { ...req.body, narrative: req.body?.narrative ? '(texto)' : undefined })
-  const { patientUuid, identifier, narrative, srRef } = req.body || {}
+  const { patientUuid, identifier, narrative, srRef, srIdentifier } = req.body || {}
   if (!narrative || !String(narrative).trim()) return res.status(400).json({ error: 'Missing narrative' })
 
   const orch = []
@@ -557,21 +564,25 @@ app.post(['/forwardercontrarreferencia/_answer', '/forwarderContrarreferencia/_a
     await putPatientToNational(patient, orch)
 
     // 2) SR a contestar: el que envía el dashboard (fila clickeada); si no viene, auto-resolver.
+    // El dashboard manda el IDOrden (srIdentifier) directamente; sirve incluso para SRs de OTROS
+    // nodos (que no podemos GET en el nodo nacional). Si no viene, lo tomamos del recurso resuelto.
     let resolvedSrRef = srRef
     let resolvedSrResource
+    let resolvedSrIdentifier = srIdentifier
     if (resolvedSrRef) {
       resolvedSrResource = await fetchServiceRequest(resolvedSrRef.split('/').pop())
-    } else {
+    } else if (!resolvedSrIdentifier) {
       const hit = await resolveServiceRequest(patient)
       resolvedSrRef = hit?.reference
       resolvedSrResource = hit?.resource
     }
-    // Cierra el ServiceRequest original (PUT, best-effort): ya llegó su respuesta.
-    if (resolvedSrResource) await updateServiceRequestStatus(resolvedSrResource, SR_TARGET_STATUS, orch)
+    if (!resolvedSrIdentifier) resolvedSrIdentifier = resolvedSrResource?.identifier?.[0]
+    // NOTA: NO cerramos el ServiceRequest aquí. "Contestar" (crear la contrarreferencia) está
+    // desacoplado de "Completar". Solo completamos NUESTROS SR, y eso lo dispara el dashboard aparte.
 
     // 3) Documento MHD (ITI-65) → nodo nacional
     if (!MHD_ENDPOINT) throw new Error('CR_MHD_ENDPOINT no configurado')
-    const tx = buildMhdTransaction({ patient, narrative: String(narrative).trim(), date: new Date().toISOString(), srRef: resolvedSrRef })
+    const tx = buildMhdTransaction({ patient, narrative: String(narrative).trim(), date: new Date().toISOString(), srRef: resolvedSrRef, srIdentifier: resolvedSrIdentifier })
     dumpBundle('contrarreferencia', patient.id, tx)
     await submitMhd(tx, orch)
 
