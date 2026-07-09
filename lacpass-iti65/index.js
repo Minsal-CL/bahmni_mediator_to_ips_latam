@@ -1951,52 +1951,57 @@ function fixBundleValidationIssues(summaryBundle) {
       console.log(`  - Patient ya tiene ${patient.identifier.length} identifiers`);
     } else {
       console.log('  - Creando identifiers desde cero...');
-      /*const originalIds = [...(patient.identifier || [])];
-      patient.identifier = [];
+      try {
+        /*const originalIds = [...(patient.identifier || [])];
+        patient.identifier = [];
 
-      const nationalId = originalIds.find(id =>
-        id.type?.coding?.some(c => c.code === 'MR') ||
-        id.use === 'official' ||
-        id.system?.includes('rut') || id.system?.includes('cedula')
-      );
+        const nationalId = originalIds.find(id =>
+          id.type?.coding?.some(c => c.code === 'MR') ||
+          id.use === 'official' ||
+          id.system?.includes('rut') || id.system?.includes('cedula')
+        );
 
-      if (natOid && nationalId) {
-        console.log(`  - Agregando national ID: ${nationalId.value}`);
-        patient.identifier.push({
-          use: 'usual',
-          type: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'MR' }] },
-          system: toUrnOid(natOid),
-          value: nationalId.value || 'unknown'
-        });*/
-      }
+        if (natOid && nationalId) {
+          console.log(`  - Agregando national ID: ${nationalId.value}`);
+          patient.identifier.push({
+            use: 'usual',
+            type: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'MR' }] },
+            system: toUrnOid(natOid),
+            value: nationalId.value || 'unknown'
+          });
+        }
 
-      const passportId = originalIds.find(id =>
-        id.type?.coding?.some(c => c.code === 'PPN') ||
-        id.system?.includes('passport') || id.system?.includes('pasaporte')
-      );
+        const passportId = originalIds.find(id =>
+          id.type?.coding?.some(c => c.code === 'PPN') ||
+          id.system?.includes('passport') || id.system?.includes('pasaporte')
+        );
 
-      if (ppnOid && passportId) {
-        console.log(`  - Agregando passport ID: ${passportId.value}`);
-        patient.identifier.push({
-          use: 'official',
-          type: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }] },
-          system: toUrnOid(ppnOid),
-          value: passportId.value || 'unknown'
-        });
-      }
+        if (ppnOid && passportId) {
+          console.log(`  - Agregando passport ID: ${passportId.value}`);
+          patient.identifier.push({
+            use: 'official',
+            type: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'PPN' }] },
+            system: toUrnOid(ppnOid),
+            value: passportId.value || 'unknown'
+          });
+        }
 
-      if (patient.identifier.length === 0 && natOid) {
-        const defaultValue = originalIds[0]?.value || `ID-${patient.id || 'unknown'}`;
-        console.log(`  - Creando identifier por defecto: ${defaultValue}`);
-        patient.identifier.push({
-          use: 'usual',
-          type: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'MR' }] },
-          system: toUrnOid(natOid),
-          value: defaultValue
-        });
+        if (patient.identifier.length === 0 && natOid) {
+          const defaultValue = originalIds[0]?.value || `ID-${patient.id || 'unknown'}`;
+          console.log(`  - Creando identifier por defecto: ${defaultValue}`);
+          patient.identifier.push({
+            use: 'usual',
+            type: { coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0203', code: 'MR' }] },
+            system: toUrnOid(natOid),
+            value: defaultValue
+          });
+        }*/
+      } catch (e) {
+        console.warn('⚠️ Error creando Patient identifiers (se omite, se continúa):', e.message);
       }
     }
-  
+  }
+
   // 10) País ISO2
   console.log('🌎 [ETAPA 15] Aplicando fixPatientCountry...');
   fixPatientCountry(summaryBundle);
