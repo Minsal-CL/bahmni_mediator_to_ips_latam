@@ -112,10 +112,11 @@ const PROFILE_DOCREF  = process.env.MS_DOCREF_PROFILE      || 'http://racsel.org
 const PROFILE_TXBNDL  = process.env.MS_TXBUNDLE_PROFILE    || 'http://racsel.org/StructureDefinition/LACBundleTransactionMHDMeOw'
 const PROFILE_ORG_LAC = process.env.MS_ORG_PROFILE_URL     || 'http://racsel.org/StructureDefinition/LACOrganization'
 const PROFILE_LIST_LAC = process.env.MS_LIST_PROFILE_URL   || 'http://racsel.org/StructureDefinition/LACList'
-// Displays LOINC canónicos exigidos por el TS/perfil RACSEL:
-//   56445-0 => 'Medication summary Document' (Composition.type y DocumentReference.type)
-//   55112-7 => 'Document summary'            (discriminador del slice Composition.section:Medicamentos)
-const COMP_TYPE     = { system: 'http://loinc.org', code: '56445-0', display: 'Medication summary Document' }
+// Displays LOINC FIJADOS por pattern en los perfiles RACSEL (el pattern manda sobre el display
+// "oficial" del TS: tx.fhir.org sugiere 'Medication summary Document' pero eso viola el pattern):
+//   56445-0 => 'Medication summary' (fijo en LACCompositionMeOw.type y LACDocReferenceMeOw.type)
+//   55112-7 => 'Document summary'   (fijo en el slice Composition.section:Medicamentos de LACCompositionMeOw)
+const COMP_TYPE     = { system: 'http://loinc.org', code: '56445-0', display: 'Medication summary' }
 const SECTION_CODE  = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
 // sourceId del SubmissionSet (MHD): OID del nodo con urn:oid: (mhd-startswithoid)
 const MHD_SOURCE_ID = process.env.MS_MHD_SOURCE_ID || process.env.MHD_SOURCE_ID || 'urn:oid:2.16.152'
@@ -298,15 +299,18 @@ function buildAuthorOrg(id) {
   return { resourceType: 'Organization', ...(id ? { id } : {}), meta: { profile: [PROFILE_ORG_LAC] }, name: AUTHOR_ORG_NAME, address: [{ country: AUTHOR_ORG_COUNTRY }] }
 }
 
-function buildComposition({ patientUrl, authorUrl, msUrls, date, narrative }) {
+// La Organization autora NO es un slice permitido en el doc bundle (LACBundleDocMeOw solo admite
+// Composition + Patient + MedicationStatement, cerrado) → va CONTENIDA en la Composition.
+function buildComposition({ patientUrl, msUrls, date, narrative }) {
   return {
     resourceType: 'Composition',
     meta: { profile: [PROFILE_COMP] },
+    contained: [buildAuthorOrg('author-org')],
     status: 'final',
     type: { coding: [COMP_TYPE], text: COMP_TYPE.display },
     subject: { reference: patientUrl },
     date,
-    author: [{ reference: authorUrl }],
+    author: [{ reference: '#author-org' }],
     title: 'Reporte de Medicamentos',
     section: [{
       title: 'Medicamentos',
@@ -325,7 +329,7 @@ function buildMhdTransaction({ patient, msResources, date }) {
   const patientUrl = `urn:uuid:${patient.id}`
   // Referencia literal al paciente en el servidor (List/DocumentReference a nivel transacción)
   const patientRef = `Patient/${patient.id}`
-  const authorUrl = u(), compUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
+  const compUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
   const ssId = randomUUID()
 
   // Clonar los MedicationStatement para el documento y reapuntar su subject al Patient del bundle
@@ -335,17 +339,16 @@ function buildMhdTransaction({ patient, msResources, date }) {
     res: { ...JSON.parse(JSON.stringify(ms)), subject: { reference: patientUrl } }
   }))
 
-  const authorOrg   = buildAuthorOrg()
   const narrative   = 'Reporte de medicamentos: ' + (msResources.map(m => m.medicationCodeableConcept?.text).filter(Boolean).join('; ') || 's/d')
-  const composition = buildComposition({ patientUrl, authorUrl, msUrls: msEntries.map(e => e.url), date, narrative })
+  const composition = buildComposition({ patientUrl, msUrls: msEntries.map(e => e.url), date, narrative })
 
-  // Document Bundle (LACBundleDocMeOw) — autocontenido, referencias urn:uuid
+  // Document Bundle (LACBundleDocMeOw) — solo Composition + Patient + MedicationStatement (slicing cerrado).
+  // La Organization autora va CONTENIDA en la Composition, no como entry.
   const docBundle = {
     resourceType: 'Bundle', meta: { profile: [PROFILE_DOCBNDL] }, type: 'document',
     identifier: { system: MASTER_ID_SYSTEM, value: docBundleUrl }, timestamp: date,
     entry: [
       { fullUrl: compUrl,    resource: composition },
-      { fullUrl: authorUrl,  resource: authorOrg },
       { fullUrl: patientUrl, resource: patient },
       ...msEntries.map(e => ({ fullUrl: e.url, resource: e.res }))
     ]
