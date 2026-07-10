@@ -525,6 +525,52 @@ async function submitMhd(txBundle, orch) {
 // ============================================================================
 app.get(['/forwarderservicerequest/_health', '/forwarderServiceRequest/_health'], (_req, res) => res.send('OK'))
 
+// ── PDQm: verificación de identidad contra el maestro (ITI-78). OPERACIONAL: consulta el maestro y,
+// si hay match REAL, fusiona (aditivo) los identifiers del maestro en el paciente. Si NO encuentra o
+// cae en el fallback sintético (tag urn:pdqm:fallback), NO toca nada → mantiene los ids propios.
+// Nunca bloquea el envío. Endpoint: PDQM_LOOKUP_URL (OpenHIM /pdqm/_lookup).
+const PDQM_LOOKUP_URL = (process.env.PDQM_LOOKUP_URL || 'https://10.68.174.206:5000/pdqm/_lookup').replace(/\/+$/, '')
+const PDQM_VERIFY_ENABLED = String(process.env.PDQM_VERIFY_ENABLED || 'true').toLowerCase() === 'true'
+const PDQM_ENRICH_IDS = String(process.env.PDQM_ENRICH_IDS || 'true').toLowerCase() === 'true'
+const PDQM_TIMEOUT_MS = parseInt(process.env.PDQM_TIMEOUT_MS || '6000', 10)
+// Fusiona identifiers del maestro que no estén ya presentes (por system|value), SIN quitar los propios.
+function mergeMasterIdentifiers(patient, masterPatient) {
+  const own = patient.identifier || (patient.identifier = [])
+  const key = i => `${String(i.system || '').toLowerCase()}|${i.value}`
+  const seen = new Set(own.map(key))
+  let added = 0
+  for (const mi of (masterPatient.identifier || [])) {
+    if (!mi || !mi.value || seen.has(key(mi))) continue
+    own.push(mi); seen.add(key(mi)); added++
+  }
+  return added
+}
+async function verifyPatientAgainstMaster(patient, orch) {
+  if (!PDQM_VERIFY_ENABLED || !PDQM_LOOKUP_URL) return { skipped: true }
+  const ids = [...new Set((patient?.identifier || []).map(i => i && i.value).filter(Boolean))]
+  for (const identifier of ids) {
+    try {
+      const r = await axios.post(PDQM_LOOKUP_URL, { identifier }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: PDQM_TIMEOUT_MS, validateStatus: false, httpsAgent: axios.defaults.httpsAgent || devAgent
+      })
+      if (orch) orch.push(mkOrch(`PDQm _lookup (${identifier})`, 'POST', PDQM_LOOKUP_URL, { identifier }, r))
+      const b = r.data || {}
+      const match = (b.entry || []).map(e => e && e.resource).find(x => x && x.resourceType === 'Patient')
+      const synthetic = (((b.meta || {}).tag) || []).some(t => t && t.system === 'urn:pdqm:fallback')
+        || ((((match || {}).meta || {}).tag) || []).some(t => t && t.system === 'urn:pdqm:fallback')
+      if (match && !synthetic) {
+        const added = PDQM_ENRICH_IDS ? mergeMasterIdentifiers(patient, match) : 0
+        logStep('✅ PDQm: verificado en el maestro', identifier, '->', `Patient/${match.id || '?'} (+${added} id maestro)`)
+        return { matched: true, masterPatient: match, identifier, added }
+      }
+      logStep('ⓘ PDQm: sin match real (fallback sintético) — se mantienen los ids propios', identifier)
+    } catch (e) { logStep('⚠️ PDQm lookup error (ignorado) — se mantienen los ids propios', `${identifier}:`, e.message) }
+  }
+  logStep('ⓘ PDQm: paciente NO encontrado en el maestro — se mantienen los ids propios')
+  return { matched: false }
+}
+
 app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'], async (req, res) => {
   logStep('📩 POST /event', req.body)
   const { uuid } = req.body
@@ -562,6 +608,7 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     // 3) Patient (para identificador nacional + subir referencia) — local y NN
     const patient = await getFromProxy(`/Patient/${pid}`)
     normalizePatientIdentifiers(patient)
+    await verifyPatientAgainstMaster(patient, orch) // PDQm (soft, log-only): verifica identidad, no cambia el envío
     await putToNode(patient, orch); sent++
     await putToNational(patient, orch) // para que el SR suelto resuelva su subject en el NN
 

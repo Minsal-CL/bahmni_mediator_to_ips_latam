@@ -117,6 +117,17 @@ const MASTER_ID_SYSTEM   = process.env.MS_MASTER_ID_SYSTEM   || 'urn:ietf:rfc:39
 const AUTHOR_ORG_NAME    = process.env.MS_AUTHOR_ORG_NAME    || 'Hospital Clínico San Borja Arriarán'
 const AUTHOR_ORG_COUNTRY = process.env.MS_AUTHOR_ORG_COUNTRY || 'CL'
 
+// ── Terminología (TS): $lookup de displays SNOMED ──
+// Hace $lookup y REEMPLAZA el display con el canónico del TS. Activado por defecto (MS_TS_APPLY_DISPLAY=true):
+// mientras el TS no tenga SNOMED el lookup no devuelve display → no cambia nada; cuando lo tenga, normaliza
+// solo, sin tocar config. Para apagarlo: MS_TS_APPLY_DISPLAY=false (o MS_TS_LOOKUP_ENABLED=false).
+const TS_BASE = (process.env.MS_TERMINOLOGY_BASE || process.env.TERMINOLOGY_BASE || process.env.TERMINOLOGY_BASE_URL || '').replace(/\/$/, '')
+const TS_LOOKUP_ENABLED = String(process.env.MS_TS_LOOKUP_ENABLED || process.env.FEATURE_TS_LOOKUP_ENABLED || 'true').toLowerCase() === 'true'
+const TS_APPLY_DISPLAY  = String(process.env.MS_TS_APPLY_DISPLAY || 'true').toLowerCase() === 'true' // ON por defecto
+const TS_DISPLAY_LANGUAGE = process.env.TS_DISPLAY_LANGUAGE || 'en'
+const TS_SNOMED_VERSION = process.env.SNOMED_VERSION_URI || process.env.TS_SNOMED_VERSION || ''
+const TS_TIMEOUT_MS = parseInt(process.env.MS_TS_TIMEOUT_MS || process.env.TS_TIMEOUT_MS || '8000', 10)
+
 // ============================================================================
 // Fuentes (proxy FHIR de OpenMRS) y destino (nodo nacional)
 // ============================================================================
@@ -211,6 +222,44 @@ function buildMedicationCC(medObs) {
   if (coding.length) out.coding = coding
   if (text) out.text = text
   return Object.keys(out).length ? out : undefined
+}
+
+// $lookup de un código SNOMED en el TS. Devuelve el display canónico (idioma TS_DISPLAY_LANGUAGE) o null.
+async function tsLookupDisplay(system, code) {
+  if (!TS_BASE || !system || !code) return null
+  const params = { system, code, displayLanguage: TS_DISPLAY_LANGUAGE }
+  if (TS_SNOMED_VERSION) params.version = TS_SNOMED_VERSION
+  const r = await axios.get(`${TS_BASE}/CodeSystem/$lookup`, {
+    params, headers: { Accept: 'application/fhir+json' },
+    timeout: TS_TIMEOUT_MS, validateStatus: false, httpsAgent: axios.defaults.httpsAgent || devAgent
+  })
+  if (r.status >= 400 || r.data?.resourceType !== 'Parameters') return null
+  const p = (r.data.parameter || []).find(x => x.name === 'display')
+  return (p && typeof p.valueString === 'string' && p.valueString.trim()) ? p.valueString.trim() : null
+}
+
+// Recorre los MedicationStatement y hace $lookup de cada coding SNOMED (en PARALELO, para acotar la
+// latencia si el TS no responde). Por defecto SOLO loguea el display sugerido; solo REEMPLAZA el display
+// si MS_TS_APPLY_DISPLAY=true. Nunca bloquea el flujo: cualquier error de TS se ignora.
+async function normalizeMedicationDisplays(msResources) {
+  if (!TS_LOOKUP_ENABLED || !TS_BASE) return
+  const codings = []
+  for (const ms of msResources)
+    for (const c of (ms.medicationCodeableConcept?.coding || []))
+      if (c.system === SNOMED_SYSTEM && c.code) codings.push(c)
+  if (!codings.length) return
+  const uniq = [...new Set(codings.map(c => c.code))]
+  const pairs = await Promise.all(uniq.map(async code => {
+    try { return [code, await tsLookupDisplay(SNOMED_SYSTEM, code)] }
+    catch (e) { logStep('⚠️ TS lookup error (ignorado)', `${code}:`, e.message); return [code, null] }
+  }))
+  const map = new Map(pairs)
+  for (const c of codings) {
+    const disp = map.get(c.code)
+    if (!disp || disp === c.display) continue
+    if (TS_APPLY_DISPLAY) { logStep('✏️ TS display reemplazado', `${c.code}: "${c.display}" -> "${disp}"`); c.display = disp }
+    else logStep('🔎 TS display sugerido (no aplicado)', `${c.code}: "${c.display}" -> "${disp}"`)
+  }
 }
 
 // ============================================================================
@@ -332,6 +381,52 @@ async function submitMhd(txBundle, orch) {
 // ============================================================================
 app.get(['/forwardermedicationstatement/_health', '/forwarderMedicationStatement/_health'], (_req, res) => res.send('OK'))
 
+// ── PDQm: verificación de identidad contra el maestro (ITI-78). OPERACIONAL: consulta el maestro y,
+// si hay match REAL, fusiona (aditivo) los identifiers del maestro en el paciente. Si NO encuentra o
+// cae en el fallback sintético (tag urn:pdqm:fallback), NO toca nada → mantiene los ids propios.
+// Nunca bloquea el envío. Endpoint: PDQM_LOOKUP_URL (OpenHIM /pdqm/_lookup).
+const PDQM_LOOKUP_URL = (process.env.PDQM_LOOKUP_URL || 'https://10.68.174.206:5000/pdqm/_lookup').replace(/\/+$/, '')
+const PDQM_VERIFY_ENABLED = String(process.env.PDQM_VERIFY_ENABLED || 'true').toLowerCase() === 'true'
+const PDQM_ENRICH_IDS = String(process.env.PDQM_ENRICH_IDS || 'true').toLowerCase() === 'true'
+const PDQM_TIMEOUT_MS = parseInt(process.env.PDQM_TIMEOUT_MS || '6000', 10)
+// Fusiona identifiers del maestro que no estén ya presentes (por system|value), SIN quitar los propios.
+function mergeMasterIdentifiers(patient, masterPatient) {
+  const own = patient.identifier || (patient.identifier = [])
+  const key = i => `${String(i.system || '').toLowerCase()}|${i.value}`
+  const seen = new Set(own.map(key))
+  let added = 0
+  for (const mi of (masterPatient.identifier || [])) {
+    if (!mi || !mi.value || seen.has(key(mi))) continue
+    own.push(mi); seen.add(key(mi)); added++
+  }
+  return added
+}
+async function verifyPatientAgainstMaster(patient, orch) {
+  if (!PDQM_VERIFY_ENABLED || !PDQM_LOOKUP_URL) return { skipped: true }
+  const ids = [...new Set((patient?.identifier || []).map(i => i && i.value).filter(Boolean))]
+  for (const identifier of ids) {
+    try {
+      const r = await axios.post(PDQM_LOOKUP_URL, { identifier }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: PDQM_TIMEOUT_MS, validateStatus: false, httpsAgent: axios.defaults.httpsAgent || devAgent
+      })
+      if (orch) orch.push(mkOrch(`PDQm _lookup (${identifier})`, 'POST', PDQM_LOOKUP_URL, { identifier }, r))
+      const b = r.data || {}
+      const match = (b.entry || []).map(e => e && e.resource).find(x => x && x.resourceType === 'Patient')
+      const synthetic = (((b.meta || {}).tag) || []).some(t => t && t.system === 'urn:pdqm:fallback')
+        || ((((match || {}).meta || {}).tag) || []).some(t => t && t.system === 'urn:pdqm:fallback')
+      if (match && !synthetic) {
+        const added = PDQM_ENRICH_IDS ? mergeMasterIdentifiers(patient, match) : 0
+        logStep('✅ PDQm: verificado en el maestro', identifier, '->', `Patient/${match.id || '?'} (+${added} id maestro)`)
+        return { matched: true, masterPatient: match, identifier, added }
+      }
+      logStep('ⓘ PDQm: sin match real (fallback sintético) — se mantienen los ids propios', identifier)
+    } catch (e) { logStep('⚠️ PDQm lookup error (ignorado) — se mantienen los ids propios', `${identifier}:`, e.message) }
+  }
+  logStep('ⓘ PDQm: paciente NO encontrado en el maestro — se mantienen los ids propios')
+  return { matched: false }
+}
+
 app.post(['/forwardermedicationstatement/_event', '/forwarderMedicationStatement/_event'], async (req, res) => {
   logStep('📩 POST /event', req.body)
   const { uuid } = req.body
@@ -382,6 +477,7 @@ app.post(['/forwardermedicationstatement/_event', '/forwarderMedicationStatement
     // 3) Patient (subir referencia)
     const patient = await getFromProxy(`/Patient/${pid}`)
     normalizePatientIdentifiers(patient)
+    await verifyPatientAgainstMaster(patient, orch) // PDQm (soft, log-only): verifica identidad, no cambia el envío
     await putToNode(patient, orch); sent++
 
     // 4) Un MedicationStatement por unidad/grupo (cada uno con su Dosis/Vía pareadas)
@@ -392,8 +488,15 @@ app.post(['/forwardermedicationstatement/_event', '/forwarderMedicationStatement
         id: u.id, patientRef, encId: uuid, effective, medObs: u.medObs, doseText: u.doseText, routeText: u.routeText
       })
       if (!ms.medicationCodeableConcept) { logStep('⚠️ Medicamento sin código, se omite', u.id); continue }
-      await putToNode(ms, orch); sent++; created.push(ms.id); msResources.push(ms)
+      msResources.push(ms)
     }
+
+    // 5) Terminología: $lookup de displays SNOMED contra el TS (una pasada, en paralelo). Por defecto
+    //    solo consulta/loguea; reemplaza el display solo si MS_TS_APPLY_DISPLAY=true. Antes de subir,
+    //    para que tanto el recurso del nodo como el documento MHD queden consistentes.
+    await normalizeMedicationDisplays(msResources)
+
+    for (const ms of msResources) { await putToNode(ms, orch); sent++; created.push(ms.id) }
 
     // 6) Documento MHD "Reporte Medicamentos" (Fase 2) — va a un servidor FHIR distinto (MHD)
     let mhd = false

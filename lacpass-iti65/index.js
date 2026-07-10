@@ -932,7 +932,8 @@ async function opLookup(ts, { code, system, display }, domainCfg) {
       return { system, code, display: disp, source: 'lookup' };
     } else {
       console.log('debug', `❌ Lookup no display: ${system}|${code}`);
-        return { system, code, display: disp, source: 'lookup' };
+      // Sin display: retornar null para NO cortar el pipeline (deja seguir a validate/translate).
+      return null;
     }
   } catch (e) {
     console.log('warn', `Lookup error: ${e.response?.status} ${e.message}`, { system, code });
