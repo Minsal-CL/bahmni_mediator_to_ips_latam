@@ -334,10 +334,15 @@ function buildMhdTransaction({ patient, msResources, date }) {
 
   // Clonar los MedicationStatement para el documento y reapuntar su subject al Patient del bundle
   // (sin mutar los recursos ya subidos al nodo de recursos, cuyo subject es la referencia literal).
-  const msEntries = msResources.map(ms => ({
-    url: u(),
-    res: { ...JSON.parse(JSON.stringify(ms)), subject: { reference: patientUrl } }
-  }))
+  // Se quita `context` (Encounter): el documento es autocontenido y ese Encounter no va en el bundle
+  // (sería referencia colgante); el ejemplo oficial del IG tampoco lo incluye. El recurso del nodo
+  // (Paso 1) conserva su context, donde el Encounter sí existe.
+  const msEntries = msResources.map(ms => {
+    const res = JSON.parse(JSON.stringify(ms))
+    res.subject = { reference: patientUrl }
+    delete res.context
+    return { url: u(), res }
+  })
 
   const narrative   = 'Reporte de medicamentos: ' + (msResources.map(m => m.medicationCodeableConcept?.text).filter(Boolean).join('; ') || 's/d')
   const composition = buildComposition({ patientUrl, msUrls: msEntries.map(e => e.url), date, narrative })
