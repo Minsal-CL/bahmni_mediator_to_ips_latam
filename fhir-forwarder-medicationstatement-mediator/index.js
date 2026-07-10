@@ -111,8 +111,14 @@ const PROFILE_DOCBNDL = process.env.MS_DOCBUNDLE_PROFILE   || 'http://racsel.org
 const PROFILE_DOCREF  = process.env.MS_DOCREF_PROFILE      || 'http://racsel.org/StructureDefinition/LACDocReferenceMeOw'
 const PROFILE_TXBNDL  = process.env.MS_TXBUNDLE_PROFILE    || 'http://racsel.org/StructureDefinition/LACBundleTransactionMHDMeOw'
 const PROFILE_ORG_LAC = process.env.MS_ORG_PROFILE_URL     || 'http://racsel.org/StructureDefinition/LACOrganization'
-const COMP_TYPE     = { system: 'http://loinc.org', code: '56445-0', display: 'Medication summary' }
-const SECTION_CODE  = { system: 'http://loinc.org', code: '55112-7', display: 'Medication summary' }
+const PROFILE_LIST_LAC = process.env.MS_LIST_PROFILE_URL   || 'http://racsel.org/StructureDefinition/LACList'
+// Displays LOINC canónicos exigidos por el TS/perfil RACSEL:
+//   56445-0 => 'Medication summary Document' (Composition.type y DocumentReference.type)
+//   55112-7 => 'Document summary'            (discriminador del slice Composition.section:Medicamentos)
+const COMP_TYPE     = { system: 'http://loinc.org', code: '56445-0', display: 'Medication summary Document' }
+const SECTION_CODE  = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
+// sourceId del SubmissionSet (MHD): OID del nodo con urn:oid: (mhd-startswithoid)
+const MHD_SOURCE_ID = process.env.MS_MHD_SOURCE_ID || process.env.MHD_SOURCE_ID || 'urn:oid:2.16.152'
 const MASTER_ID_SYSTEM   = process.env.MS_MASTER_ID_SYSTEM   || 'urn:ietf:rfc:3986'
 const AUTHOR_ORG_NAME    = process.env.MS_AUTHOR_ORG_NAME    || 'Hospital Clínico San Borja Arriarán'
 const AUTHOR_ORG_COUNTRY = process.env.MS_AUTHOR_ORG_COUNTRY || 'CL'
@@ -288,8 +294,8 @@ function buildMedicationStatement({ id, patientRef, encId, effective, medObs, do
 // ============================================================================
 // Documento MHD (Fase 2): Composition + Document Bundle + DocumentReference + List → transacción
 // ============================================================================
-function buildAuthorOrg() {
-  return { resourceType: 'Organization', meta: { profile: [PROFILE_ORG_LAC] }, name: AUTHOR_ORG_NAME, address: [{ country: AUTHOR_ORG_COUNTRY }] }
+function buildAuthorOrg(id) {
+  return { resourceType: 'Organization', ...(id ? { id } : {}), meta: { profile: [PROFILE_ORG_LAC] }, name: AUTHOR_ORG_NAME, address: [{ country: AUTHOR_ORG_COUNTRY }] }
 }
 
 function buildComposition({ patientUrl, authorUrl, msUrls, date, narrative }) {
@@ -314,10 +320,20 @@ function buildComposition({ patientUrl, authorUrl, msUrls, date, narrative }) {
 // Ensambla la transacción MHD (LACBundleTransactionMHDMeOw) con el documento embebido.
 function buildMhdTransaction({ patient, msResources, date }) {
   const u = () => `urn:uuid:${randomUUID()}`
-  // Patient con fullUrl = Patient/{id} para que coincida con MedicationStatement.subject (consistencia del documento)
-  const patientUrl = `Patient/${patient.id}`
+  // Patient con fullUrl ABSOLUTO (urn:uuid) dentro del documento; todas las referencias internas
+  // (Composition/MedicationStatement.subject) apuntan a este mismo urn:uuid → sin huérfanos.
+  const patientUrl = `urn:uuid:${patient.id}`
+  // Referencia literal al paciente en el servidor (List/DocumentReference a nivel transacción)
+  const patientRef = `Patient/${patient.id}`
   const authorUrl = u(), compUrl = u(), docBundleUrl = u(), docRefUrl = u(), listUrl = u()
-  const msEntries = msResources.map(ms => ({ url: u(), res: ms }))
+  const ssId = randomUUID()
+
+  // Clonar los MedicationStatement para el documento y reapuntar su subject al Patient del bundle
+  // (sin mutar los recursos ya subidos al nodo de recursos, cuyo subject es la referencia literal).
+  const msEntries = msResources.map(ms => ({
+    url: u(),
+    res: { ...JSON.parse(JSON.stringify(ms)), subject: { reference: patientUrl } }
+  }))
 
   const authorOrg   = buildAuthorOrg()
   const narrative   = 'Reporte de medicamentos: ' + (msResources.map(m => m.medicationCodeableConcept?.text).filter(Boolean).join('; ') || 's/d')
@@ -335,20 +351,32 @@ function buildMhdTransaction({ patient, msResources, date }) {
     ]
   }
 
-  // DocumentReference (LACDocReferenceMeOw)
+  // DocumentReference (LACDocReferenceMeOw) — author (1..1) obligatorio: Organization contenida
+  const docRefOrg = buildAuthorOrg('author-org')
   const docRef = {
     resourceType: 'DocumentReference', meta: { profile: [PROFILE_DOCREF] },
+    contained: [docRefOrg],
     masterIdentifier: { system: MASTER_ID_SYSTEM, value: docBundleUrl },
     status: 'current',
     type: { coding: [COMP_TYPE] },
-    subject: { reference: `Patient/${patient.id}` },
+    author: [{ reference: '#author-org' }],
+    subject: { reference: patientRef },
     date,
     content: [{ attachment: { contentType: 'application/fhir+json', url: docBundleUrl } }]
   }
 
-  // List / SubmissionSet (LACList)
+  // List / SubmissionSet (LACList) — requiere meta.profile, identifier(official), code y subject
+  // para *conformar* al perfil y matchear el slice SubmissionSet de la transacción.
   const list = {
-    resourceType: 'List', status: 'current', mode: 'working', date,
+    resourceType: 'List',
+    meta: { profile: [PROFILE_LIST_LAC] },
+    text: { status: 'generated', div: '<div xmlns="http://www.w3.org/1999/xhtml">SubmissionSet Reporte de Medicamentos</div>' },
+    extension: [{ url: 'https://profiles.ihe.net/ITI/MHD/StructureDefinition/ihe-sourceId', valueIdentifier: { value: MHD_SOURCE_ID } }],
+    identifier: [{ use: 'official', system: 'urn:ietf:rfc:3986', value: `urn:uuid:${ssId}` }],
+    status: 'current', mode: 'working',
+    code: { coding: [{ system: 'https://profiles.ihe.net/ITI/MHD/CodeSystem/MHDlistTypes', code: 'submissionset' }] },
+    subject: { reference: patientRef },
+    date,
     entry: [{ item: { reference: docRefUrl } }]
   }
 
