@@ -1,0 +1,1481 @@
+{
+    "resourceType": "Bundle",
+    "meta": {
+        "profile": [
+            "http://hl7.org/fhir/uv/ips/StructureDefinition/Bundle-uv-ips",
+            "http://racsel.org/StructureDefinition/LACBundleIPS"
+        ]
+    },
+    "identifier": {
+        "system": "urn:ietf:rfc:4122",
+        "value": "f9a7ea21-7277-4bdf-b2c8-ba142890e289"
+    },
+    "type": "document",
+    "timestamp": "2026-07-09T15:58:46.837-04:00",
+    "entry": [
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Composition/5237b94c-48d0-4a4a-aaee-e9f2f41ee514",
+            "resource": {
+                "resourceType": "Composition",
+                "meta": {
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips",
+                        "http://racsel.org/StructureDefinition/LACCompositionIPS"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><h1>Documento Resumen Clínico de Paciente de Chile</h1></div>"
+                },
+                "status": "final",
+                "type": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "60591-5",
+                            "display": "Patient Summary Document"
+                        }
+                    ]
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4"
+                },
+                "date": "2026-07-09T15:58:28.992-04:00",
+                "author": [
+                    {
+                        "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Organization/8af38fb7-f204-413a-9629-60f83ddc67bf"
+                    }
+                ],
+                "title": "Resumen de Paciente del 07/09/2026",
+                "confidentiality": "N",
+                "section": [
+                    {
+                        "title": "Alergías e Intolerancias",
+                        "code": {
+                            "coding": [
+                                {
+                                    "system": "http://loinc.org",
+                                    "code": "48765-2",
+                                    "display": "Allergies and adverse reactions Document"
+                                }
+                            ]
+                        },
+                        "text": {
+                            "status": "generated",
+                            "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><h5>Alergías e Intolerancias</h5><table class=\"hapiPropertyTable\"><thead><tr><th>Alergeno</th><th>Estado</th><th>Categoría</th><th>Reacción</th><th>Severidad</th><th>Comentarios</th><th>Inicio</th></tr></thead><tbody><tr id=\"AllergyIntolerance-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/AllergyIntolerance/757e892f-0a8a-49b5-a777-690323d52142/_history/1\"><td> Shellfish </td><td> Active </td><td> FOOD </td><td> Diarrhea </td><td> severe </td><td/><td/></tr></tbody></table></div>"
+                        },
+                        "entry": [
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/AllergyIntolerance/757e892f-0a8a-49b5-a777-690323d52142"
+                            }
+                        ]
+                    },
+                    {
+                        "title": "Lista de Medicamentos",
+                        "code": {
+                            "coding": [
+                                {
+                                    "system": "http://loinc.org",
+                                    "code": "10160-0",
+                                    "display": "History of Medication use Narrative"
+                                }
+                            ]
+                        },
+                        "text": {
+                            "status": "generated",
+                            "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><h5>Resumen de Medicación: Declaraciones de Medicación</h5><table class=\"hapiPropertyTable\"><thead><tr><th>Medicamento</th><th>Estado</th><th>Vía</th><th>Sig</th><th>Fecha</th></tr></thead><tbody><tr id=\"MedicationStatement-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/ca5cef8f-2001-47b8-8bb8-cadf4d616ed4/_history/1\"><td> producto que contiene amoxicilina (producto medicinal) </td><td>Active</td><td> via oral </td><td> 1 cada 12 horas por 7 dias </td><td> Sat Jun 27 12:09:42 CLT 2026 </td></tr><tr id=\"MedicationStatement-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/c6d959f0-e95b-416d-ae22-9c7bc3f2a023/_history/1\"><td> producto que contiene exactamente clotrimazol 10 miligramos/1 gramo, crema de liberación convencional para aplicación cutánea (fármaco de uso clínico) </td><td>Active</td><td> vía tópica </td><td> 1 aplicación por cada 12 horas </td><td> Wed Jul 01 17:03:53 CLT 2026 </td></tr><tr id=\"MedicationStatement-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/1e88893d-95e2-4aa7-ae86-0ff1b15dbf02/_history/1\"><td> Clonazepam </td><td>Active</td><td> Vía Oral </td><td> 1 por cada 24 horas durante la noche </td><td> Wed Jul 01 17:03:53 CLT 2026 </td></tr><tr id=\"MedicationStatement-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/2843e7e8-e4b8-465e-8d1c-65e455ec154d/_history/1\"><td> producto que contiene loratadina (producto medicinal) </td><td>Active</td><td> Vía Oral </td><td> 1 por cada 24 horas durante la noche </td><td> Wed Jul 01 17:03:53 CLT 2026 </td></tr></tbody></table></div>"
+                        },
+                        "entry": [
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/ca5cef8f-2001-47b8-8bb8-cadf4d616ed4"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/c6d959f0-e95b-416d-ae22-9c7bc3f2a023"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/1e88893d-95e2-4aa7-ae86-0ff1b15dbf02"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/2843e7e8-e4b8-465e-8d1c-65e455ec154d"
+                            }
+                        ]
+                    },
+                    {
+                        "title": "Lista de Problemas",
+                        "code": {
+                            "coding": [
+                                {
+                                    "system": "http://loinc.org",
+                                    "code": "11450-4",
+                                    "display": "Problem list - Reported"
+                                }
+                            ]
+                        },
+                        "text": {
+                            "status": "generated",
+                            "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><h5>Lista de Problemas</h5><table class=\"hapiPropertyTable\"><thead><tr><th>Problemas Médicos</th><th>Estado</th><th>Comentarios</th><th>Fecha de Inicio</th></tr></thead><tbody><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/efd99f1e-ecef-4873-a263-c5d98e31a845/_history/1\"><td> Primary Testicular Failure </td><td> active </td><td/><td> Mon May 18 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/1a54437e-66e5-4d5f-ba9a-fad5b4dc4c92/_history/1\"><td> Hemorrhage of rectum and anus </td><td> active </td><td/><td> Wed May 20 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/16816e83-6be3-4281-bad3-2bbf9905a415/_history/1\"><td> Hemorrhage of rectum and anus </td><td> active </td><td/><td> Wed May 20 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/a806a529-1334-4adb-91b8-7d7190c75cd4/_history/1\"><td> Primary Testicular Failure </td><td> active </td><td/><td> Mon May 18 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/ac0ae0db-b690-4e04-b0a3-4297095a6bba/_history/1\"><td> Fracture of pelvis </td><td> active </td><td/><td> Mon Jul 06 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/131ae9e3-ebc3-4f50-a724-102d8e3fe911/_history/1\"><td> Fracture of pelvis </td><td> active </td><td/><td> Mon Jul 06 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/a12f1556-6af8-4b92-bd79-c9fae58dc97a/_history/1\"><td> Fracture of pelvis </td><td> active </td><td/><td> Mon Jul 06 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/875f844a-a4af-45e0-98f0-1560b2f5e2e8/_history/1\"><td> Hemorrhage of rectum and anus </td><td> active </td><td/><td> Wed May 20 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/733faf04-af2a-408c-8412-fd616e6868a1/_history/1\"><td> Primary Testicular Failure </td><td> active </td><td/><td> Mon May 18 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/4a0cf6af-9994-4d42-86c0-0722975ba509/_history/1\"><td> Fracture of pelvis </td><td> active </td><td/><td> Mon Jul 06 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/84003663-dcf8-44d7-bf1f-898e3b3ed901/_history/1\"><td> Hemorrhage of rectum and anus </td><td> active </td><td/><td> Wed May 20 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/83aba030-f1d5-49f9-87f7-230e94cff6fb/_history/1\"><td> Primary Testicular Failure </td><td> active </td><td/><td> Mon May 18 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/c5f84d04-cfaf-42ae-9b38-d69bd0b110d7/_history/1\"><td> Primary Testicular Failure </td><td> active </td><td/><td> Mon May 18 00:00:00 CLT 2026 </td></tr><tr id=\"Condition-https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/3d310d78-f1a5-42f9-ba61-8414029f1333/_history/1\"><td> Primary Testicular Failure </td><td> active </td><td/><td> Mon May 18 00:00:00 CLT 2026 </td></tr></tbody></table></div>"
+                        },
+                        "entry": [
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/efd99f1e-ecef-4873-a263-c5d98e31a845"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/1a54437e-66e5-4d5f-ba9a-fad5b4dc4c92"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/16816e83-6be3-4281-bad3-2bbf9905a415"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/a806a529-1334-4adb-91b8-7d7190c75cd4"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/ac0ae0db-b690-4e04-b0a3-4297095a6bba"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/131ae9e3-ebc3-4f50-a724-102d8e3fe911"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/a12f1556-6af8-4b92-bd79-c9fae58dc97a"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/875f844a-a4af-45e0-98f0-1560b2f5e2e8"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/733faf04-af2a-408c-8412-fd616e6868a1"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/4a0cf6af-9994-4d42-86c0-0722975ba509"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/84003663-dcf8-44d7-bf1f-898e3b3ed901"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/83aba030-f1d5-49f9-87f7-230e94cff6fb"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/c5f84d04-cfaf-42ae-9b38-d69bd0b110d7"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/3d310d78-f1a5-42f9-ba61-8414029f1333"
+                            }
+                        ]
+                    },
+                    {
+                        "title": "Historial de Enfermedades Pasadas",
+                        "code": {
+                            "coding": [
+                                {
+                                    "system": "http://loinc.org",
+                                    "code": "11348-0",
+                                    "display": "History of Past illness note"
+                                }
+                            ]
+                        },
+                        "text": {
+                            "status": "generated",
+                            "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">Sección de historia clínica</div>"
+                        },
+                        "entry": [
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/f67e2398-801d-41ea-b4a0-ec9f987b8ae5"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/08addaf7-b04d-48d1-965f-89286dbba306"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/632d738a-dbf6-407f-bc2a-ad96a5530dbf"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/90d92283-b352-4e87-874d-52443fce5f35"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/a1206b59-8638-4379-815b-6e48454c13ac"
+                            },
+                            {
+                                "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/b8a278f1-38b7-4730-934c-93ea4b36c078"
+                            }
+                        ]
+                    }
+                ],
+                "id": "5237b94c-48d0-4a4a-aaee-e9f2f41ee514",
+                "custodian": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Organization/8af38fb7-f204-413a-9629-60f83ddc67bf"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+            "resource": {
+                "resourceType": "Patient",
+                "id": "2fabc400-4303-4627-a9aa-91ed100577b4",
+                "meta": {
+                    "versionId": "68",
+                    "lastUpdated": "2026-07-07T10:22:42.694-04:00",
+                    "profile": [
+                        "http://racsel.org/StructureDefinition/LACPatient",
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Patient-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>2fabc400-4303-4627-a9aa-91ed100577b4</td></tr><tr><td>Identifier:</td><td><div>CL3511714-8</div><div>CL3511714-8</div></td></tr><tr><td>Active:</td><td>true</td></tr><tr><td>Name:</td><td> Jorge Flautista <b>MANSI </b></td></tr><tr><td>Gender:</td><td>MALE</td></tr><tr><td>Birth Date:</td><td>20/05/1983</td></tr><tr><td>Deceased:</td><td>false</td></tr></tbody></table></div>"
+                },
+                "identifier": [
+                    {
+                        "id": "f9316a0d-4132-4062-bcf8-c4200e802cea",
+                        "use": "official",
+                        "type": {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                    "code": "NI"
+                                }
+                            ],
+                            "text": "Patient Identifier"
+                        },
+                        "system": "urn:oid.2.16.152",
+                        "value": "CL3511714-8"
+                    },
+                    {
+                        "id": "24d4677e-e134-4e96-b0c5-484899132e25",
+                        "use": "official",
+                        "type": {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                    "code": "PPN"
+                                }
+                            ]
+                        },
+                        "system": "urn:oid.2.16.840.1.113883.4.330.152",
+                        "value": "CL3511714-8"
+                    }
+                ],
+                "active": true,
+                "name": [
+                    {
+                        "id": "5464f2eb-f04a-4fc7-952f-413bb59c69bd",
+                        "text": "Jorge Flautista Mansi",
+                        "family": "Mansi",
+                        "given": [
+                            "Jorge",
+                            "Flautista"
+                        ]
+                    }
+                ],
+                "gender": "male",
+                "birthDate": "1983-05-20",
+                "deceasedBoolean": false
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/AllergyIntolerance/757e892f-0a8a-49b5-a777-690323d52142",
+            "resource": {
+                "resourceType": "AllergyIntolerance",
+                "id": "757e892f-0a8a-49b5-a777-690323d52142",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-05-20T10:43:40.439-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/AllergyIntolerance-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>757e892f-0a8a-49b5-a777-690323d52142</td></tr><tr><td>Clinical Status:</td><td>Active</td></tr><tr><td>Verification Status:</td><td>Confirmed</td></tr><tr><td>Type:</td><td>ALLERGY</td></tr><tr><td>Category:</td><td> Enumeration[food] </td></tr><tr><td>Criticality:</td><td>HIGH</td></tr><tr><td>Code:</td><td>Shellfish</td></tr><tr><td>Patient:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Recorded Date:</td><td>20/05/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr><tr><td>Note:</td><td><div/></td></tr><tr><td>Reaction:</td><td/></tr><tr><td>Substance:</td><td>Shellfish</td></tr><tr><td>Manifestation:</td><td><div>Diarrhea</div></td></tr><tr><td>Severity:</td><td>SEVERE</td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+                            "code": "active",
+                            "display": "Active"
+                        }
+                    ],
+                    "text": "Active"
+                },
+                "verificationStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+                            "code": "confirmed",
+                            "display": "Confirmed"
+                        }
+                    ],
+                    "text": "Confirmed"
+                },
+                "type": "allergy",
+                "category": [
+                    "food"
+                ],
+                "criticality": "high",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "227146005",
+                            "display": "Shellfish"
+                        }
+                    ],
+                    "text": "Shellfish"
+                },
+                "patient": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "recordedDate": "2026-05-20T10:41:45-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                },
+                "reaction": [
+                    {
+                        "substance": {
+                            "coding": [
+                                {
+                                    "system": "http://snomed.info/sct",
+                                    "code": "227146005"
+                                }
+                            ],
+                            "text": "Shellfish"
+                        },
+                        "manifestation": [
+                            {
+                                "coding": [
+                                    {
+                                        "system": "http://snomed.info/sct",
+                                        "code": "62315008"
+                                    }
+                                ],
+                                "text": "Diarrhea"
+                            }
+                        ],
+                        "severity": "severe"
+                    }
+                ]
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/ca5cef8f-2001-47b8-8bb8-cadf4d616ed4",
+            "resource": {
+                "resourceType": "MedicationStatement",
+                "id": "ca5cef8f-2001-47b8-8bb8-cadf4d616ed4",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-06-27T12:10:04.085-04:00",
+                    "profile": [
+                        "http://racsel.org/StructureDefinition/LACMedicationStatementMeOw",
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationStatement-uv-ips"
+                    ]
+                },
+                "status": "active",
+                "medicationCodeableConcept": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "27658006",
+                            "display": "producto que contiene amoxicilina (producto medicinal)"
+                        }
+                    ],
+                    "text": "producto que contiene amoxicilina (producto medicinal)"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4"
+                },
+                "effectiveDateTime": "2026-06-27T12:09:42-04:00",
+                "dosage": [
+                    {
+                        "text": "1 cada 12 horas por 7 dias",
+                        "route": {
+                            "text": "via oral"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/c6d959f0-e95b-416d-ae22-9c7bc3f2a023",
+            "resource": {
+                "resourceType": "MedicationStatement",
+                "id": "c6d959f0-e95b-416d-ae22-9c7bc3f2a023",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-01T17:35:10.330-04:00",
+                    "profile": [
+                        "http://racsel.org/StructureDefinition/LACMedicationStatementMeOw",
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationStatement-uv-ips"
+                    ]
+                },
+                "status": "active",
+                "medicationCodeableConcept": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "326203005",
+                            "display": "producto que contiene exactamente clotrimazol 10 miligramos/1 gramo, crema de liberación convencional para aplicación cutánea (fármaco de uso clínico)"
+                        }
+                    ],
+                    "text": "producto que contiene exactamente clotrimazol 10 miligramos/1 gramo, crema de liberación convencional para aplicación cutánea (fármaco de uso clínico)"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4"
+                },
+                "effectiveDateTime": "2026-07-01T17:03:53-04:00",
+                "dosage": [
+                    {
+                        "text": "1 aplicación por cada 12 horas",
+                        "route": {
+                            "text": "vía tópica"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/1e88893d-95e2-4aa7-ae86-0ff1b15dbf02",
+            "resource": {
+                "resourceType": "MedicationStatement",
+                "id": "1e88893d-95e2-4aa7-ae86-0ff1b15dbf02",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-01T17:35:10.405-04:00",
+                    "profile": [
+                        "http://racsel.org/StructureDefinition/LACMedicationStatementMeOw",
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationStatement-uv-ips"
+                    ]
+                },
+                "status": "active",
+                "medicationCodeableConcept": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "69708003",
+                            "display": "Clonazepam"
+                        }
+                    ],
+                    "text": "Clonazepam"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4"
+                },
+                "effectiveDateTime": "2026-07-01T17:03:53-04:00",
+                "dosage": [
+                    {
+                        "text": "1 por cada 24 horas durante la noche",
+                        "route": {
+                            "text": "Vía Oral"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/MedicationStatement/2843e7e8-e4b8-465e-8d1c-65e455ec154d",
+            "resource": {
+                "resourceType": "MedicationStatement",
+                "id": "2843e7e8-e4b8-465e-8d1c-65e455ec154d",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-01T17:35:10.461-04:00",
+                    "profile": [
+                        "http://racsel.org/StructureDefinition/LACMedicationStatementMeOw",
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/MedicationStatement-uv-ips"
+                    ]
+                },
+                "status": "active",
+                "medicationCodeableConcept": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "108652002",
+                            "display": "producto que contiene loratadina (producto medicinal)"
+                        }
+                    ],
+                    "text": "producto que contiene loratadina (producto medicinal)"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4"
+                },
+                "effectiveDateTime": "2026-07-01T17:03:53-04:00",
+                "dosage": [
+                    {
+                        "text": "1 por cada 24 horas durante la noche",
+                        "route": {
+                            "text": "Vía Oral"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/efd99f1e-ecef-4873-a263-c5d98e31a845",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "efd99f1e-ecef-4873-a263-c5d98e31a845",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-05-20T10:43:40.211-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>efd99f1e-ecef-4873-a263-c5d98e31a845</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Primary Testicular Failure</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 18 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>20/05/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "48723006",
+                            "display": "Primary Testicular Failure"
+                        }
+                    ],
+                    "text": "Primary Testicular Failure"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-18T00:00:00-04:00",
+                "recordedDate": "2026-05-20T10:43:32-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/1a54437e-66e5-4d5f-ba9a-fad5b4dc4c92",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "1a54437e-66e5-4d5f-ba9a-fad5b4dc4c92",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-05-20T12:49:52.413-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>1a54437e-66e5-4d5f-ba9a-fad5b4dc4c92</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Hemorrhage of rectum and anus</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 20 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>20/05/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "266464001",
+                            "display": "Hemorrhage of rectum and anus"
+                        }
+                    ],
+                    "text": "Hemorrhage of rectum and anus"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-20T00:00:00-04:00",
+                "recordedDate": "2026-05-20T12:49:37-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/16816e83-6be3-4281-bad3-2bbf9905a415",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "16816e83-6be3-4281-bad3-2bbf9905a415",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-06-25T11:25:41.886-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>16816e83-6be3-4281-bad3-2bbf9905a415</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Hemorrhage of rectum and anus</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 20 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>25/06/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "266464001",
+                            "display": "Hemorrhage of rectum and anus"
+                        }
+                    ],
+                    "text": "Hemorrhage of rectum and anus"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-20T00:00:00-04:00",
+                "recordedDate": "2026-06-25T08:51:12-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/a806a529-1334-4adb-91b8-7d7190c75cd4",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "a806a529-1334-4adb-91b8-7d7190c75cd4",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-06-25T11:25:41.929-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>a806a529-1334-4adb-91b8-7d7190c75cd4</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Primary Testicular Failure</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 18 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>25/06/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "48723006",
+                            "display": "Primary Testicular Failure"
+                        }
+                    ],
+                    "text": "Primary Testicular Failure"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-18T00:00:00-04:00",
+                "recordedDate": "2026-06-25T08:51:12-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/ac0ae0db-b690-4e04-b0a3-4297095a6bba",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "ac0ae0db-b690-4e04-b0a3-4297095a6bba",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-06T15:25:54.152-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>ac0ae0db-b690-4e04-b0a3-4297095a6bba</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Fracture of pelvis</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 06 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>06/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "77493009",
+                            "display": "Fracture of pelvis"
+                        }
+                    ],
+                    "text": "Fracture of pelvis"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-06T00:00:00-04:00",
+                "recordedDate": "2026-07-06T15:25:24-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/131ae9e3-ebc3-4f50-a724-102d8e3fe911",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "131ae9e3-ebc3-4f50-a724-102d8e3fe911",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-06T15:33:04.773-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>131ae9e3-ebc3-4f50-a724-102d8e3fe911</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Fracture of pelvis</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 06 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>06/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "77493009",
+                            "display": "Fracture of pelvis"
+                        }
+                    ],
+                    "text": "Fracture of pelvis"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-06T00:00:00-04:00",
+                "recordedDate": "2026-07-06T15:32:48-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/a12f1556-6af8-4b92-bd79-c9fae58dc97a",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "a12f1556-6af8-4b92-bd79-c9fae58dc97a",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-06T17:51:33.876-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>a12f1556-6af8-4b92-bd79-c9fae58dc97a</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Fracture of pelvis</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 06 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>06/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "77493009",
+                            "display": "Fracture of pelvis"
+                        }
+                    ],
+                    "text": "Fracture of pelvis"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-06T00:00:00-04:00",
+                "recordedDate": "2026-07-06T17:51:28-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/875f844a-a4af-45e0-98f0-1560b2f5e2e8",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "875f844a-a4af-45e0-98f0-1560b2f5e2e8",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-06T17:51:33.931-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>875f844a-a4af-45e0-98f0-1560b2f5e2e8</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Hemorrhage of rectum and anus</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 20 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>06/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "266464001",
+                            "display": "Hemorrhage of rectum and anus"
+                        }
+                    ],
+                    "text": "Hemorrhage of rectum and anus"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-20T00:00:00-04:00",
+                "recordedDate": "2026-07-06T17:51:28-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/733faf04-af2a-408c-8412-fd616e6868a1",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "733faf04-af2a-408c-8412-fd616e6868a1",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-06T17:51:33.954-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>733faf04-af2a-408c-8412-fd616e6868a1</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Primary Testicular Failure</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 18 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>06/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "48723006",
+                            "display": "Primary Testicular Failure"
+                        }
+                    ],
+                    "text": "Primary Testicular Failure"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-18T00:00:00-04:00",
+                "recordedDate": "2026-07-06T17:51:28-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/4a0cf6af-9994-4d42-86c0-0722975ba509",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "4a0cf6af-9994-4d42-86c0-0722975ba509",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-07T10:22:46.927-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>4a0cf6af-9994-4d42-86c0-0722975ba509</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Fracture of pelvis</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 06 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>07/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "77493009",
+                            "display": "Fracture of pelvis"
+                        }
+                    ],
+                    "text": "Fracture of pelvis"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-06T00:00:00-04:00",
+                "recordedDate": "2026-07-07T10:22:41-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/84003663-dcf8-44d7-bf1f-898e3b3ed901",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "84003663-dcf8-44d7-bf1f-898e3b3ed901",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-07T10:22:46.962-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>84003663-dcf8-44d7-bf1f-898e3b3ed901</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Hemorrhage of rectum and anus</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 20 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>07/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "266464001",
+                            "display": "Hemorrhage of rectum and anus"
+                        }
+                    ],
+                    "text": "Hemorrhage of rectum and anus"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-20T00:00:00-04:00",
+                "recordedDate": "2026-07-07T10:22:41-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/83aba030-f1d5-49f9-87f7-230e94cff6fb",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "83aba030-f1d5-49f9-87f7-230e94cff6fb",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-07T10:22:46.986-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>83aba030-f1d5-49f9-87f7-230e94cff6fb</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Primary Testicular Failure</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 18 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>07/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "48723006",
+                            "display": "Primary Testicular Failure"
+                        }
+                    ],
+                    "text": "Primary Testicular Failure"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-18T00:00:00-04:00",
+                "recordedDate": "2026-07-07T10:22:41-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/c5f84d04-cfaf-42ae-9b38-d69bd0b110d7",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "c5f84d04-cfaf-42ae-9b38-d69bd0b110d7",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-07T14:59:25.480-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>c5f84d04-cfaf-42ae-9b38-d69bd0b110d7</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Primary Testicular Failure</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 18 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>07/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "48723006",
+                            "display": "Primary Testicular Failure"
+                        }
+                    ],
+                    "text": "Primary Testicular Failure"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-18T00:00:00-04:00",
+                "recordedDate": "2026-07-07T14:59:15-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/3d310d78-f1a5-42f9-ba61-8414029f1333",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "3d310d78-f1a5-42f9-ba61-8414029f1333",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-08T18:05:20.002-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>3d310d78-f1a5-42f9-ba61-8414029f1333</td></tr><tr><td>Clinical Status:</td><td> active </td></tr><tr><td>Code:</td><td>Primary Testicular Failure</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 18 May 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>08/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "active"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "48723006",
+                            "display": "Primary Testicular Failure"
+                        }
+                    ],
+                    "text": "Primary Testicular Failure"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-05-18T00:00:00-04:00",
+                "recordedDate": "2026-07-08T18:04:52-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/f67e2398-801d-41ea-b4a0-ec9f987b8ae5",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "f67e2398-801d-41ea-b4a0-ec9f987b8ae5",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-07T14:45:24.100-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>f67e2398-801d-41ea-b4a0-ec9f987b8ae5</td></tr><tr><td>Clinical Status:</td><td> inactive </td></tr><tr><td>Code:</td><td>Fracture of pelvis</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 07 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>07/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "inactive"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "77493009",
+                            "display": "Fracture of pelvis"
+                        }
+                    ],
+                    "text": "Fracture of pelvis"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-07T00:00:00-04:00",
+                "recordedDate": "2026-07-07T14:45:12-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/08addaf7-b04d-48d1-965f-89286dbba306",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "08addaf7-b04d-48d1-965f-89286dbba306",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-07T14:45:24.121-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>08addaf7-b04d-48d1-965f-89286dbba306</td></tr><tr><td>Clinical Status:</td><td> inactive </td></tr><tr><td>Code:</td><td>Hemorrhage of rectum and anus</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 07 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>07/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "inactive"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "266464001",
+                            "display": "Hemorrhage of rectum and anus"
+                        }
+                    ],
+                    "text": "Hemorrhage of rectum and anus"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-07T00:00:00-04:00",
+                "recordedDate": "2026-07-07T14:45:12-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/632d738a-dbf6-407f-bc2a-ad96a5530dbf",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "632d738a-dbf6-407f-bc2a-ad96a5530dbf",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-07T14:59:25.432-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>632d738a-dbf6-407f-bc2a-ad96a5530dbf</td></tr><tr><td>Clinical Status:</td><td> inactive </td></tr><tr><td>Code:</td><td>Fracture of pelvis</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 07 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>07/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "inactive"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "77493009",
+                            "display": "Fracture of pelvis"
+                        }
+                    ],
+                    "text": "Fracture of pelvis"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-07T00:00:00-04:00",
+                "recordedDate": "2026-07-07T14:59:15-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/90d92283-b352-4e87-874d-52443fce5f35",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "90d92283-b352-4e87-874d-52443fce5f35",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-07T14:59:25.454-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>90d92283-b352-4e87-874d-52443fce5f35</td></tr><tr><td>Clinical Status:</td><td> inactive </td></tr><tr><td>Code:</td><td>Hemorrhage of rectum and anus</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 07 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>07/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "inactive"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "266464001",
+                            "display": "Hemorrhage of rectum and anus"
+                        }
+                    ],
+                    "text": "Hemorrhage of rectum and anus"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-07T00:00:00-04:00",
+                "recordedDate": "2026-07-07T14:59:15-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/a1206b59-8638-4379-815b-6e48454c13ac",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "a1206b59-8638-4379-815b-6e48454c13ac",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-08T18:05:19.913-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>a1206b59-8638-4379-815b-6e48454c13ac</td></tr><tr><td>Clinical Status:</td><td> inactive </td></tr><tr><td>Code:</td><td>Fracture of pelvis</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 07 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>08/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "inactive"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "77493009",
+                            "display": "Fracture of pelvis"
+                        }
+                    ],
+                    "text": "Fracture of pelvis"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-07T00:00:00-04:00",
+                "recordedDate": "2026-07-08T18:04:52-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Condition/b8a278f1-38b7-4730-934c-93ea4b36c078",
+            "resource": {
+                "resourceType": "Condition",
+                "id": "b8a278f1-38b7-4730-934c-93ea4b36c078",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2026-07-08T18:05:19.959-04:00",
+                    "profile": [
+                        "http://hl7.org/fhir/uv/ips/StructureDefinition/Condition-uv-ips"
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody><tr><td>Id:</td><td>b8a278f1-38b7-4730-934c-93ea4b36c078</td></tr><tr><td>Clinical Status:</td><td> inactive </td></tr><tr><td>Code:</td><td>Hemorrhage of rectum and anus</td></tr><tr><td>Subject:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Patient/2fabc400-4303-4627-a9aa-91ed100577b4\">Jorge Flautista Mansi (Patient Identifier: CL3511714-8)</a></td></tr><tr><td>Onset:</td><td> 07 July 2026 00:00:00 </td></tr><tr><td>Recorded Date:</td><td>08/07/2026</td></tr><tr><td>Recorder:</td><td><a href=\"http://localhost:8080/openmrs/ws/fhir2/R4/Practitioner/d7a669e7-5e07-11ef-8f7c-0242ac120002\">Super Man</a></td></tr></tbody></table></div>"
+                },
+                "clinicalStatus": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                            "code": "inactive"
+                        }
+                    ]
+                },
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://snomed.info/sct",
+                            "code": "266464001",
+                            "display": "Hemorrhage of rectum and anus"
+                        }
+                    ],
+                    "text": "Hemorrhage of rectum and anus"
+                },
+                "subject": {
+                    "reference": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Patient/2fabc400-4303-4627-a9aa-91ed100577b4",
+                    "type": "Patient",
+                    "display": "Jorge Flautista Mansi (Patient Identifier: CL3511714-8)"
+                },
+                "onsetDateTime": "2026-07-07T00:00:00-04:00",
+                "recordedDate": "2026-07-08T18:04:52-04:00",
+                "recorder": {
+                    "type": "Practitioner",
+                    "display": "Super Man"
+                }
+            }
+        },
+        {
+            "fullUrl": "https://hapinacional.nodonacionalph4h-dev.minsal.cl/fhir/Organization/8af38fb7-f204-413a-9629-60f83ddc67bf",
+            "resource": {
+                "resourceType": "Organization",
+                "meta": {
+                    "profile": [
+                        "http://racsel.org/StructureDefinition/LACOrganization"
+                    ]
+                },
+                "name": "Clínica Las Condes",
+                "address": [
+                    {
+                        "line": [
+                            "Estoril 450"
+                        ],
+                        "city": "Región Metropolitana",
+                        "country": "CL"
+                    }
+                ],
+                "id": "8af38fb7-f204-413a-9629-60f83ddc67bf",
+                "identifier": [
+                    {
+                        "use": "official",
+                        "value": "G7H8"
+                    }
+                ]
+            }
+        }
+    ],
+    "id": "e0a8b9ce-12d4-4e7e-a0a6-f874e918b69a"
+}
