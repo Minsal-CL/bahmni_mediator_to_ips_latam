@@ -168,10 +168,10 @@ async function putToNode (resource) {
 function normalizePatientIdentifiers(patient) {
   if (!Array.isArray(patient?.identifier)) return
 
-  /***const getOid = (envVar, defaultVal) => {
+  const getOid = (envVar, defaultVal) => {
     const val = process.env[envVar] || defaultVal
-    return val.startsWith('urn:oid.') ? val : (val.startsWith('urn:oid:') ? val.replace(':', '.') : `urn:oid.${val}`)
-  }  ***/
+    return val.startsWith('urn:oid:') ? val : (val.startsWith('urn:oid.') ? val.replace('.', ':') : `urn:oid:${val}`)
+  }
   const natOid = getOid('LAC_NATIONAL_ID_SYSTEM_OID', '2.16.152')
   const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152')
 

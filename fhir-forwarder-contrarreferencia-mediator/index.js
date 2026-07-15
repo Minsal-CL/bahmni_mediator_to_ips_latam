@@ -166,10 +166,8 @@ const PROFILE_PATIENT = process.env.CR_PATIENT_PROFILE || 'http://racsel.org/Str
 // LACPatient exige slices identifier: national (type v2-0203#NI) e international (type v2-0203#PPN),
 // con system = URN OID (constraint lac-pat-2). OIDs configurables (defaults = Chile / pasaporte LAC).
 const V2_0203     = 'http://terminology.hl7.org/CodeSystem/v2-0203'
-// OJO: el separador es PUNTO ('urn:oid.'), no dos puntos, para satisfacer la constraint lac-pat-2 del IG
-// (startsWith('urn:oid.2.16.'))  — es lo mismo que hace el mediador ITI-65 del IPS (toUrnOid con ".").
-const NAT_ID_OID  = process.env.CR_NATIONAL_ID_OID || 'urn:oid.2.16.152'
-const PPN_ID_OID  = process.env.CR_PASSPORT_ID_OID || 'urn:oid.2.16.840.1.113883.4.330.152'
+const NAT_ID_OID  = process.env.CR_NATIONAL_ID_OID || 'urn:oid:2.16.152'
+const PPN_ID_OID  = process.env.CR_PASSPORT_ID_OID || 'urn:oid:2.16.840.1.113883.4.330.152'
 const NAT_ID_CODE = process.env.CR_NATIONAL_ID_TYPE_CODE || 'NI' // National unique individual identifier
 // SubmissionSet (LACList): code fijo + extensión sourceId (1..1, identificador del publicador)
 const MHD_LIST_CODE_SYSTEM = 'https://profiles.ihe.net/ITI/MHD/CodeSystem/MHDlistTypes'
@@ -207,10 +205,10 @@ async function getFromProxy(path) {
 function normalizePatientIdentifiers(patient) {
   if (!Array.isArray(patient?.identifier)) return
 
-  /***const getOid = (envVar, defaultVal) => {
+  const getOid = (envVar, defaultVal) => {
     const val = process.env[envVar] || defaultVal
-    return val.startsWith('urn:oid.') ? val : (val.startsWith('urn:oid:') ? val.replace(':', '.') : `urn:oid.${val}`)
-  }  ***/
+    return val.startsWith('urn:oid:') ? val : (val.startsWith('urn:oid.') ? val.replace('.', ':') : `urn:oid:${val}`)
+  }
   const natOid = getOid('LAC_NATIONAL_ID_SYSTEM_OID', '2.16.152')
   const ppnOid = getOid('LAC_PASSPORT_ID_SYSTEM_OID', '2.16.840.1.113883.4.330.152')
 
