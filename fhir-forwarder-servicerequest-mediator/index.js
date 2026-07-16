@@ -525,6 +525,93 @@ async function submitMhd(txBundle, orch) {
 // ============================================================================
 app.get(['/forwarderservicerequest/_health', '/forwarderServiceRequest/_health'], (_req, res) => res.send('OK'))
 
+// ── Practitioner REAL desde OpenMRS (perfil Practitioner-uv-ips) ────────────────────────────
+// Los atributos PRN/PPN/NI/practitioner_type son *Provider Attributes* de OpenMRS y FHIR2 NO los
+// expone en el recurso Practitioner → se leen de la REST v1 (/provider/{uuid}) y se mapean acá.
+// Identifiers SOLO con `type` (v2-0203), sin system. practitioner_type → qualification.
+// Si el provider no se puede leer, NO pisa nada: deja el Practitioner tal como vino (best-effort).
+const PRAC_REST_URL     = (process.env.OPENMRS_REST_URL || '').replace(/\/+$/, '')
+const PRAC_PROFILE      = process.env.PRACTITIONER_PROFILE_URL || 'http://hl7.org/fhir/uv/ips/StructureDefinition/Practitioner-uv-ips'
+const PRAC_V2_0203      = 'http://terminology.hl7.org/CodeSystem/v2-0203'
+const PRAC_AGENT        = new https.Agent({ rejectUnauthorized: false })
+const PRAC_ATTR_ID      = { PRN: 'PRN', PPN: 'PPN', NI: 'NI' } // atributo OpenMRS -> código v2-0203
+const PRAC_ATTR_QUALIF  = process.env.PRACTITIONER_ATTR_QUALIFICATION || 'practitioner_type'
+const PRAC_ATTR_COUNTRY = process.env.PRACTITIONER_ATTR_COUNTRY || 'Address.country'
+const PRAC_ENABLED      = String(process.env.PRACTITIONER_ENRICH_ENABLED || 'true').toLowerCase() === 'true'
+const PRAC_LOG = (...a) => console.log(new Date().toISOString(), ...a)
+
+async function pracFetchProvider(uuid) {
+  if (!PRAC_REST_URL || !uuid) return null
+  const v = 'custom:(uuid,identifier,attributes:(attributeType:(display),value,voided),person:(uuid,gender,birthdate,preferredName:(givenName,familyName)))'
+  const r = await axios.get(`${PRAC_REST_URL}/provider/${uuid}?v=${encodeURIComponent(v)}`, {
+    auth: { username: process.env.OPENMRS_USER, password: process.env.OPENMRS_PASS },
+    headers: { Accept: 'application/json' },
+    timeout: parseInt(process.env.PRACTITIONER_TIMEOUT_MS || '10000', 10),
+    validateStatus: false, httpsAgent: axios.defaults.httpsAgent || PRAC_AGENT
+  })
+  if (r.status >= 400) { PRAC_LOG('⚠️ PRAC: REST v1 /provider', uuid, '->', r.status); return null }
+  return r.data
+}
+
+// Enriquece el Practitioner (de FHIR2) con los datos REALES del provider de OpenMRS.
+async function enrichPractitionerFromOpenmrs(prac) {
+  if (!PRAC_ENABLED || !prac || prac.resourceType !== 'Practitioner' || !prac.id) return prac
+  let prov = null
+  try { prov = await pracFetchProvider(prac.id) }
+  catch (e) { PRAC_LOG('⚠️ PRAC: error leyendo provider (ignorado):', e.message) }
+  if (!prov) { PRAC_LOG('ⓘ PRAC: provider no legible — Practitioner queda como vino:', prac.id); return prac }
+
+  // attributes -> { display: value }
+  const attrs = {}
+  for (const a of (prov.attributes || [])) {
+    if (a && a.voided) continue
+    const k = a && a.attributeType && a.attributeType.display
+    const raw = a && a.value
+    const val = (raw && typeof raw === 'object') ? (raw.display || raw.name || raw.uuid) : raw
+    if (k && val != null && String(val).trim() !== '') attrs[k] = String(val).trim()
+  }
+
+  // identifiers: PRN / PPN / NI (solo type, sin system) + el identificador propio del provider
+  const keyOf = i => `${(i && i.type && i.type.coding && i.type.coding[0] && i.type.coding[0].code) || ''}|${i && i.value}`
+  const seen = new Set((prac.identifier || []).map(keyOf))
+  const add = []
+  for (const attr of Object.keys(PRAC_ATTR_ID)) {
+    const v = attrs[attr]
+    if (!v) continue
+    const id = { use: 'official', type: { coding: [{ system: PRAC_V2_0203, code: PRAC_ATTR_ID[attr] }] }, value: v }
+    if (!seen.has(keyOf(id))) { add.push(id); seen.add(keyOf(id)) }
+  }
+  if (prov.identifier) {
+    const id = { value: String(prov.identifier) }
+    if (!seen.has(keyOf(id))) { add.push(id); seen.add(keyOf(id)) }
+  }
+  if (add.length) prac.identifier = [...(prac.identifier || []), ...add]
+
+  // practitioner_type -> qualification ; Address.country -> address
+  if (attrs[PRAC_ATTR_QUALIF]) prac.qualification = [{ code: { text: attrs[PRAC_ATTR_QUALIF] } }]
+  if (attrs[PRAC_ATTR_COUNTRY]) prac.address = [{ country: attrs[PRAC_ATTR_COUNTRY] }]
+
+  // nombre / género / nacimiento reales (solo si FHIR2 no los trajo)
+  const per = prov.person || {}
+  const pn  = per.preferredName || {}
+  if (!(prac.name || []).length && (pn.familyName || pn.givenName)) {
+    prac.name = [{ use: 'official', ...(pn.familyName ? { family: pn.familyName } : {}), ...(pn.givenName ? { given: [pn.givenName] } : {}) }]
+  }
+  if (!prac.gender && per.gender) {
+    const g = String(per.gender).toUpperCase()
+    if (g === 'M') prac.gender = 'male'
+    else if (g === 'F') prac.gender = 'female'
+  }
+  if (!prac.birthDate && per.birthdate) prac.birthDate = String(per.birthdate).slice(0, 10)
+
+  // perfil común a todos los mediadores
+  prac.meta = prac.meta || {}
+  prac.meta.profile = [...new Set([...(prac.meta.profile || []), PRAC_PROFILE])]
+  PRAC_LOG('✅ PRAC: Practitioner enriquecido', prac.id, '| identifiers:', (prac.identifier || []).length)
+  return prac
+}
+// ── fin Practitioner REAL ───────────────────────────────────────────────────────────────────
+
 // ── PDQm: verificación de identidad contra el maestro (ITI-78). OPERACIONAL: consulta el maestro y,
 // si hay match REAL, fusiona (aditivo) los identifiers del maestro en el paciente. Si NO encuentra o
 // cae en el fallback sintético (tag urn:pdqm:fallback), NO toca nada → mantiene los ids propios.
@@ -615,7 +702,11 @@ app.post(['/forwarderservicerequest/_event', '/forwarderServiceRequest/_event'],
     // 4) Practitioner del Encounter (best-effort; queda en el Encounter, el requester del SR es la org de origen)
     const practitionerRef = pickPractitionerRef(observations, enc)
     if (practitionerRef?.startsWith('Practitioner/')) {
-      try { const prac = await getFromProxy(`/${practitionerRef}`); await putToNode(prac, orch); sent++ }
+      try {
+        const prac = await getFromProxy(`/${practitionerRef}`)
+        await enrichPractitionerFromOpenmrs(prac) // Practitioner REAL (PRN/PPN/NI/qualification desde OpenMRS)
+        await putToNode(prac, orch); sent++
+      }
       catch (e) { logStep('⚠️ No se pudo subir Practitioner:', e.message) }
     }
 
