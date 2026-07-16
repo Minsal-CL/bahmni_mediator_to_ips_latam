@@ -1191,7 +1191,7 @@ async function normalizeTerminologyInBundle(bundle) {
     const uniq = new Set(); // system|code|version
     const entries = bundle?.entry || [];
     const versionDefault = process.env.SNOMED_VERSION_URI
-      || 'http://snomed.info/sct/900000000000207008/version/20240331';
+      || 'http://snomed.info/sct/900000000000207008/version/20260201';
     for (const ent of entries) {
       const res = ent.resource;
       if (!res) continue;
