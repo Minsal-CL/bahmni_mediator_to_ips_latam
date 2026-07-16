@@ -2771,24 +2771,15 @@ function normalizeOrganizationResource(orga) {
     const identifiers = [
         {
             "use": "official",
+            //"system": "https://registroorganizaciones.cl/id",
             "value": "G7H8"
-        }
-    ];
-
-    const name = [
-        {
-            "use": "official",
-            "family": "Salas",
-            "given": [
-                "Marcelo"
-            ]
         }
     ];
 
     const address = [
         {
             "line": [
-                "Estoril 450"
+                "Santa Rosa 1234"
             ],
             "city": "Región Metropolitana",
             "country": "CL"
@@ -2796,10 +2787,10 @@ function normalizeOrganizationResource(orga) {
     ];
 
     orga.meta = {
-        "profile": [ "http://hl7.org/fhir/uv/ips/StructureDefinition/Organization-uv-ips" ]
+        "profile": [ "http://racsel.org/StructureDefinition/LACOrganization" ]
     };
     orga.identifier = identifiers;
-    orga.name = 'Clínica Las Condes';
+    orga.name = 'Hospital San Borja';
     orga.address = address;
     return orga;
 }

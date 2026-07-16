@@ -2357,20 +2357,10 @@ function normalizeOrganizationResource(orga) {
         }
     ];
 
-    const name = [
-        {
-            "use": "official",
-            "family": "Salas",
-            "given": [
-                "Marcelo"
-            ]
-        }
-    ];
-
     const address = [
         {
             "line": [
-                "Estoril 450"
+                "Santa Rosa 1234"
             ],
             "city": "Región Metropolitana",
             "country": "CL"
@@ -2381,7 +2371,7 @@ function normalizeOrganizationResource(orga) {
         "profile": [ "http://racsel.org/StructureDefinition/LACOrganization" ]
     };
     orga.identifier = identifiers;
-    orga.name = 'Clínica Las Condes';
+    orga.name = 'Hospital San Borja';
     orga.address = address;
     return orga;
 }
