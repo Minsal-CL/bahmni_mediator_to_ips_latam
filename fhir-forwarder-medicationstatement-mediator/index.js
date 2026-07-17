@@ -112,11 +112,12 @@ const PROFILE_DOCREF  = process.env.MS_DOCREF_PROFILE      || 'http://racsel.org
 const PROFILE_TXBNDL  = process.env.MS_TXBUNDLE_PROFILE    || 'http://racsel.org/StructureDefinition/LACBundleTransactionMHDMeOw'
 const PROFILE_ORG_LAC = process.env.MS_ORG_PROFILE_URL     || 'http://racsel.org/StructureDefinition/LACOrganization'
 const PROFILE_LIST_LAC = process.env.MS_LIST_PROFILE_URL   || 'http://racsel.org/StructureDefinition/LACList'
-// Displays LOINC FIJADOS por pattern en los perfiles RACSEL (el pattern manda sobre el display
-// "oficial" del TS: tx.fhir.org sugiere 'Medication summary Document' pero eso viola el pattern):
-//   56445-0 => 'Medication summary' (fijo en LACCompositionMeOw.type y LACDocReferenceMeOw.type)
-//   55112-7 => 'Document summary'   (fijo en el slice Composition.section:Medicamentos de LACCompositionMeOw)
-const COMP_TYPE     = { system: 'http://loinc.org', code: '56445-0', display: 'Medication summary' }
+// Displays/títulos FIJADOS por los perfiles RACSEL. OJO: en 0.2.1 (profileDate 2026-07-03) RACSEL
+// INVIRTIÓ el fijo de 56445-0 respecto a 0.2 — ahora exige el display oficial de LOINC:
+//   56445-0 => 'Medication summary Document' (fijo en LACCompositionMeOw.type y LACDocReferenceMeOw.type)  [ANTES: 'Medication summary']
+//   55112-7 => 'Document summary'            (fijo en Composition.section:Medicamentos.code)
+//   section:Medicamentos.title => 'Medications' (fijo, NO 'Medicamentos')
+const COMP_TYPE     = { system: 'http://loinc.org', code: '56445-0', display: 'Medication summary Document' }
 const SECTION_CODE  = { system: 'http://loinc.org', code: '55112-7', display: 'Document summary' }
 // sourceId del SubmissionSet (MHD): OID del nodo con urn:oid: (mhd-startswithoid)
 const MHD_SOURCE_ID = process.env.MS_MHD_SOURCE_ID || process.env.MHD_SOURCE_ID || 'urn:oid:2.16.152'
@@ -313,7 +314,7 @@ function buildComposition({ patientUrl, msUrls, date, narrative }) {
     author: [{ reference: '#author-org' }],
     title: 'Reporte de Medicamentos',
     section: [{
-      title: 'Medicamentos',
+      title: 'Medications', // fijo en LACCompositionMeOw 0.2.1 (NO 'Medicamentos')
       code: { coding: [SECTION_CODE] },
       text: { status: 'generated', div: `<div xmlns="http://www.w3.org/1999/xhtml">${narrative}</div>` },
       entry: msUrls.map(u => ({ reference: u }))
